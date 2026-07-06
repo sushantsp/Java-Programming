@@ -396,5 +396,7 @@ equal
 
 This was really a mini lesson in how Java models behavior-rich objects.
 
-### Part - 11
+### Part - 11 & 12
+
+![alt text](Part_11_12.png)
 
