@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2 Ways to Create Threads — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+    --main-t: #60a5fa; --new-t: #fbbf24;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,15,23,.85); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border); padding: 12px 0;
+  }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 2px 9px; }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline { background: #0d1424; border: 1px solid var(--border); padding: 1px 7px; border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle; }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .steps { counter-reset: step; list-style: none; }
+  .steps li { counter-increment: step; padding: 9px 0 9px 52px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  .steps li::before {
+    content: counter(step);
+    position: absolute; left: 0; top: 9px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--card2); border: 1px solid var(--accent);
+    color: var(--accent); font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+  .run-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 7px; padding: 4px 14px; font-size: 11.5px; font-weight: 700; }
+
+  .console { background: #050810; border-top: 1px solid var(--border); padding: 12px 16px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; display: none; max-height: 260px; overflow-y: auto; }
+  .console .cline { opacity: 0; transform: translateY(4px); transition: all .25s; }
+  .console .cline.hello { color: var(--main-t); }
+  .console .cline.world { color: var(--new-t); }
+  .console .cline.sys { color: var(--muted); }
+  .console .cline.show { opacity: 1; transform: none; }
+  .console-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card { position: relative; width: 100%; min-height: 220px; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1); }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 34px; text-align: center; }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 11px 15px; margin-bottom: 8px; font-size: 14px; font-family: inherit; transition: all .15s; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl { display: none; margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  .expl.show { display: block; }
+  .quiz-score { display: none; text-align: center; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px; }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .predict-opts { display: flex; flex-direction: column; gap: 8px; }
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>2 Ways to Create Threads</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 3 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Overview <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Naya thread banane ke 2 tarike hain Java mein.</p>
+    <div class="card">
+      <p>To create a new thread in Java, you can either:</p>
+      <ul class="clean">
+        <li><span class="hl">extends Thread</span> class karke, ya</li>
+        <li><span class="hl">implements Runnable</span> interface karke</li>
+      </ul>
+      <p class="hinglish">Idea simple hai — jo kaam naye thread mein karana hai (jaise "World" print karana), wo ek alag class mein likhna hoga <code class="inline">run()</code> method ke andar. Main thread apna kaam (jaise "Hello" print) khud karta rahega.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Way 1: extends Thread <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Jab bhi naye thread mein koi kaam karana ho — sabse pehle class banao, Thread ko extend karo, kaam run() mein likho.</p>
+
+    <div class="card">
+      <h3>Steps</h3>
+      <ol class="steps">
+        <li>Nayi class banao (jaise <code class="inline">World</code>)</li>
+        <li>Usko <span class="hl">extends Thread</span> karo</li>
+        <li><span class="hl">run() method override</span> karo — jo kaam karana hai wo isi ke andar likhna</li>
+        <li>Class ka <span class="hl-p">object banao</span></li>
+        <li>Object pe <span class="hl-p">start()</span> call karo</li>
+      </ol>
+    </div>
+
+    <div class="card">
+      <h3>Code — pehle sirf main thread</h3>
+      <p style="margin-bottom:4px;">Video mein pehle ye chalaya — sirf Hello print hua, kyunki World ka object hi nahi bana tha:</p>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">World</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) {
+            System.out.println(<span class="st">"World"</span>);
+        }
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) {
+            System.out.println(<span class="st">"Hello"</span>);
+        }
+    }
+}</pre>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Ab World ko bhi chalao</h3>
+      <p style="margin-bottom:4px;">World print karane ke liye — object banao aur <span class="hl">start()</span> call karo:</p>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runInterleaved(this)">▶ Run</button></div>
+        <pre><span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+    <span class="ty">World</span> w = <span class="kw">new</span> <span class="ty">World</span>();
+    w.start();                        <span class="cm">// naya thread start!</span>
+
+    <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) {
+        System.out.println(<span class="st">"Hello"</span>); <span class="cm">// ye main thread karta hai</span>
+    }
+}</pre>
+        <div class="console">
+          <div class="console-label">Output (random interleaved — har run pe alag)</div>
+        </div>
+      </div>
+      <p class="hinglish">Output mein kabhi Hello, kabhi World — <b>random order mein mixed</b>. Do threads (main + Thread-0) ek saath kaam kar rahe hain.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Important Observations <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Video mein ye points explicitly bataye gaye — interview ke liye bhi important.</p>
+
+    <div class="card">
+      <h3>1. Output ka order — RANDOM</h3>
+      <ul class="clean">
+        <li>Execution <span class="hl">random order</span> mein hota hai — pehle World, phir Hello, phir World... aisa koi fixed pattern <b>nahi</b> hota</li>
+        <li>Kyunki <span class="hl-p">do independent kaam</span> ho rahe hain — dono apni marzi se chalte hain</li>
+        <li>Agar order mein chahiye, toh phir thread ka matlab hi kya? Tab toh sequential hi likhna padega</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>2. Thread names — khud dekho</h3>
+      <p style="margin-bottom:4px;"><code class="inline">Thread.currentThread().getName()</code> lagane pe dikha:</p>
+      <ul class="clean">
+        <li>main thread ka naam: <span class="hl">main</span></li>
+        <li>naye thread ka default naam: <span class="hl" style="color:var(--new-t)">Thread-0</span></li>
+        <li>Output: main, Thread-0, main, Thread-0... randomly mixed</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>3. Infinite loop ke neeche code — UNREACHABLE</h3>
+      <p>Agar main() mein infinite loop laga do aur uske neeche kuch bhi likho, toh compiler <span class="hl">unreachable statement</span> error deta hai — kyunki control wahan tak pahunch hi nahi sakta.</p>
+      <p class="hinglish">Isliye neeche likha "Hello" kabhi print hi nahi hota.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Way 2: implements Runnable <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Same kaam, alag style — Runnable interface implement karo.</p>
+
+    <div class="card">
+      <h3>Steps</h3>
+      <ol class="steps">
+        <li>Nayi class banao jo <span class="hl">implements Runnable</span> kare</li>
+        <li><span class="hl">run() override</span> karo — kaam wahi likhna</li>
+        <li>Apni class ka object banao (jaise <code class="inline">world</code>)</li>
+        <li><span class="hl-p">Thread ka object banao</span> — constructor mein apna object pass karo: <code class="inline">new Thread(world)</code></li>
+        <li>Thread object pe <span class="hl-p">start()</span> call karo</li>
+      </ol>
+      <p class="hinglish">Catch yahi hai: <b>Runnable mein start() method hota hi nahi</b> — start() sirf <b>Thread class</b> mein hai. Isliye Thread ka object banana padta hai.</p>
+    </div>
+
+    <div class="card">
+      <h3>Code</h3>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runInterleaved(this)">▶ Run</button></div>
+        <pre><span class="kw">class</span> <span class="ty">World</span> <span class="kw">implements</span> <span class="ty">Runnable</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) {
+            System.out.println(<span class="st">"World"</span>);
+        }
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        <span class="ty">World</span> world = <span class="kw">new</span> <span class="ty">World</span>();       <span class="cm">// kahani wala object</span>
+        <span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(world);    <span class="cm">// Thread mein pass karo</span>
+        t1.start();                        <span class="cm">// ab naya thread chalega</span>
+
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) {
+            System.out.println(<span class="st">"Hello"</span>);
+        }
+    }
+}</pre>
+        <div class="console">
+          <div class="console-label">Output (random interleaved — har run pe alag)</div>
+        </div>
+      </div>
+      <p class="hinglish">Same result — Hello aur World dono <b>parallel</b> execute ho rahe hain, randomly mixed.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Bonus: start() vs run() <span class="badge bonus">BONUS</span></h2></div>
+    <p class="sec-sub">Sabse classic interview question — is video ke topic ka natural extension.</p>
+
+    <div class="card">
+      <ul class="clean">
+        <li><span class="hl">t1.start()</span> → <b>naya thread banta hai</b>, aur wo thread run() ko call karta hai</li>
+        <li><span class="hl" style="color:var(--bad)">t1.run()</span> → <b>naya thread NAHI banta</b> — run() sidha <b>main thread</b> pe execute hota hai (normal method call jaisa)</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Predict the output</h3>
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">World</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) System.out.println(<span class="st">"World"</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Test</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        <span class="ty">World</span> w = <span class="kw">new</span> <span class="ty">World</span>();
+        w.run();   <span class="cm">// dhyan se — start() NAHI, run() hai!</span>
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) System.out.println(<span class="st">"Hello"</span>);
+    }
+}</pre>
+      </div>
+      <div class="predict-opts" id="predict1">
+        <button class="opt" onclick="checkPredict(this,'predict1','A')">A) Hello aur World randomly mixed</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','B')">B) Pehle saara World, phir saara Hello</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','C')">C) Pehle saara Hello, phir saara World</button>
+      </div>
+      <div class="expl" id="predict1-expl"><b>Answer: B</b> — run() direct call karne se naya thread nahi banta. Main thread pehle poora run() (saara World) execute karta hai, phir Hello ka loop chalta hai. <b>Sequential execution, no threading!</b></div>
+    </div>
+
+    <div class="card">
+      <h3>Bonus: extends Thread vs implements Runnable — kya better hai? <span class="badge bonus">BONUS</span></h3>
+      <table>
+        <tr><th></th><th>extends Thread</th><th>implements Runnable</th></tr>
+        <tr><td>start() call</td><td>Direct — w.start()</td><td>new Thread(obj).start()</td></tr>
+        <tr><td>Inheritance</td><td>Thread ko extend kiya = aur koi class extend <b>nahi</b> kar sakte</td><td>Koi bhi class extend kar sakte ho</td></tr>
+        <tr><td>Nature</td><td>IS-A Thread</td><td>Sirf "kaam" define karta hai — Thread alag se</td></tr>
+        <tr><td>Preferred?</td><td>Quick demos</td><td><b>Real projects — ye preferred hai</b></td></tr>
+      </table>
+      <p class="hinglish">Java mein multiple inheritance nahi hota — Thread extend kar liya toh doosri class extend karne ka option gaya. Runnable mein ye problem nahi.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/10</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">8 questions — video + bonus content se. Instant feedback milega.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Java Threads Made SUPER EASY! 2 Ways to Create Threads") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+<script>
+/* ================= PROGRESS ================= */
+const KEY = 'mt-revision-v3';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= INTERLEAVED RUN DEMO ================= */
+function runInterleaved(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  cons.querySelectorAll('.cline').forEach(l => l.remove());
+
+  const lines = [];
+  let hello = 0, world = 0;
+  for (let i = 0; i < 36; i++) {
+    const isHello = Math.random() > 0.5;
+    if (isHello && hello < 20) { lines.push(['hello', 'Hello']); hello++; }
+    else if (world < 20) { lines.push(['world', 'World']); world++; }
+    else if (hello < 20) { lines.push(['hello', 'Hello']); hello++; }
+    else break;
+  }
+  lines.push(['sys', '... (100000 tak)']);
+  lines.push(['sys', 'Process finished with exit code 0']);
+
+  lines.forEach((l, i) => {
+    const div = document.createElement('div');
+    div.className = 'cline ' + l[0];
+    div.textContent = l[1];
+    cons.appendChild(div);
+    setTimeout(() => div.classList.add('show'), 60 * i);
+  });
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= PREDICT ================= */
+function checkPredict(btn, parentId, chosen) {
+  const parent = document.getElementById(parentId);
+  const correct = 'B';
+  parent.querySelectorAll('.opt').forEach(o => o.disabled = true);
+  if (chosen === correct) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.opt').forEach(o => {
+      if (o.getAttribute('onclick').includes("'B'")) o.classList.add('correct');
+    });
+  }
+  document.getElementById(parentId + '-expl').classList.add('show');
+}
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'Java mein naya thread banane ke 2 ways kya hain?', a: '1) <b>extends Thread</b> class &nbsp; 2) <b>implements Runnable</b> interface' },
+  { q: 'Naye thread ka kaam kahan likhte hain?', a: '<b>run() method</b> override karke — jo kaam karana hai wo isi ke andar' },
+  { q: 'extends Thread karne pe thread kaise start hota hai?', a: 'Object banao → <b>obj.start()</b> — direct start milta hai kyunki start() Thread class mein hai' },
+  { q: 'implements Runnable karne pe thread kaise start hota hai?', a: '<b>new Thread(runnableObj).start()</b> — pehle Thread ka object banao, constructor mein apna object pass karo' },
+  { q: 'start() method kis class mein hota hai?', a: '<b>Thread</b> — Runnable mein start() hota hi nahi, isi liye Thread ka object banana padta hai' },
+  { q: 'Naya thread banne par uska default naam kya hota hai?', a: '<b>Thread-0</b> (agla Thread-1, phir Thread-2...)' },
+  { q: 'Do threads ka output kis order mein aata hai?', a: '<b>Random order</b> — koi fixed pattern nahi, kyunki dono independent tasks hain' },
+  { q: 't1.run() directly call karne se kya hoga?', a: '<b>Naya thread nahi banega</b> — run() main thread pe normal method ki tarah execute hoga (sequential)' },
+  { q: 'Infinite loop ke neeche likha code?', a: '<b>Unreachable statement</b> — compiler error, kyunki control wahan pahunch hi nahi sakta' },
+  { q: 'extends Thread vs implements Runnable — kya better?', a: 'Generally <b>Runnable</b> — kyunki Thread extend karne se aur koi class extend nahi kar sakte (no multiple inheritance)' }
+];
+let fcIdx = 0;
+
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'Java mein naya thread banane ke 2 tarike kya hain?',
+    opts: ['new Thread() ya new Runnable()', 'extends Thread ya implements Runnable', 'extends Runnable ya implements Thread', 'startThread() ya runThread()'],
+    ans: 1,
+    ex: '<b>extends Thread</b> class ya <b>implements Runnable</b> interface — ye 2 ways hain.'
+  },
+  {
+    q: 'Naye thread mein jo kaam karana hai wo kahan likhte hain?',
+    opts: ['main() mein', 'start() mein', 'run() method override karke', 'constructor mein'],
+    ans: 2,
+    ex: 'Thread/Runnable ka <b>run() method override</b> karke kaam usi ke andar likhte hain.'
+  },
+  {
+    q: 'start() method kahan milta hai?',
+    opts: ['Runnable interface mein', 'Thread class mein', 'Dono mein', 'Object class mein'],
+    ans: 1,
+    ex: 'start() sirf <b>Thread class</b> mein hai — Runnable mein nahi. Isi liye Runnable ke case mein Thread ka object banana padta hai.'
+  },
+  {
+    q: 'Runnable implement karke thread start karne ka sahi tarika?',
+    opts: ['world.start()', 'new Thread(world).start()', 'world.run()', 'Thread.start(world)'],
+    ans: 1,
+    ex: 'Pehle apna object banao, phir <b>new Thread(world)</b> — constructor mein pass karo — phir <b>.start()</b>.'
+  },
+  {
+    q: 'Video mein naye thread ka default naam kya tha?',
+    opts: ['main', 'Thread-0', 'Worker-1', 'Thread-main'],
+    ans: 1,
+    ex: 'getName() se dikha — main thread ka naam <b>main</b>, naya thread <b>Thread-0</b>.'
+  },
+  {
+    q: 'Hello aur World wale do loops ka output kis order mein aata hai?',
+    opts: ['Hello pehle, World baad mein', 'World pehle, Hello baad mein', 'Alternating — HW HW HW', 'Random — koi fixed order nahi'],
+    ans: 3,
+    ex: 'Do <b>independent tasks</b> hain — output <b>randomly mixed</b> aata hai, koi specific order nahi.'
+  },
+  {
+    q: 'Agar threads output ko order mein dete, toh?',
+    opts: ['Performance badhti', 'Threads ka koi matlab nahi hota', 'Memory bachti', 'Compiler error aata'],
+    ans: 1,
+    ex: 'Video mein bola — order chahiye toh sequential karo. Threads ka matlab hi <b>parallel independent kaam</b> hai.'
+  },
+  {
+    q: 'BONUS: w.run() (start ki jagah run) directly call karne se kya hoga?',
+    opts: ['Naya thread ban jata hai', 'Exception aati hai', 'Naya thread nahi banta — main thread pe run() chalta hai', 'Kuch print nahi hota'],
+    ans: 2,
+    ex: 'run() direct call = normal method call. <b>Naya thread nahi banta</b> — sab kuch main thread pe sequentially hota hai.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Threads banane ke dono tarike pakke ho gaye.';
+    else if (score >= 6) msg = 'Badhiya! Thode se points dobara revise kar lo.';
+    else msg = 'Theek hai — notes + flashcards dobara dekho, phir try karo!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synchronization — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(11,15,23,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 2px 9px; }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline { background: #0d1424; border: 1px solid var(--border); padding: 1px 7px; border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle; }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+  .run-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 7px; padding: 4px 14px; font-size: 11.5px; font-weight: 700; }
+
+  .console { background: #050810; border-top: 1px solid var(--border); padding: 12px 16px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; display: none; }
+  .console .cline { opacity: 0; transform: translateY(4px); transition: all .25s; color: #a7f3d0; }
+  .console .cline.sys { color: var(--muted); }
+  .console .cline.bad { color: var(--bad); }
+  .console .cline.good { color: var(--good); font-weight: 700; }
+  .console .cline.show { opacity: 1; transform: none; }
+  .console-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); }
+
+  .term-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+  .term { border: 1px solid; border-radius: 12px; padding: 14px 16px; }
+  .term .t-name { font-size: 15px; font-weight: 800; }
+  .term .t-desc { font-size: 13px; margin-top: 4px; }
+  .t-red { border-color: var(--bad); color: var(--bad); background: rgba(248,113,113,.06); }
+  .t-red .t-desc { color: #c7d2e4; }
+  .t-yellow { border-color: var(--warn); color: var(--warn); background: rgba(251,191,36,.06); }
+  .t-yellow .t-desc { color: #c7d2e4; }
+  .t-green { border-color: var(--good); color: var(--good); background: rgba(52,211,153,.06); }
+  .t-green .t-desc { color: #c7d2e4; }
+  .t-blue { border-color: var(--accent); color: var(--accent); background: rgba(108,140,255,.06); }
+  .t-blue .t-desc { color: #c7d2e4; }
+  @media (max-width: 640px) { .term-grid { grid-template-columns: 1fr; } }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card { position: relative; width: 100%; min-height: 220px; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1); }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 34px; text-align: center; }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 11px 15px; margin-bottom: 8px; font-size: 14px; font-family: inherit; transition: all .15s; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl { display: none; margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  .expl.show { display: block; }
+  .quiz-score { display: none; text-align: center; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px; }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Synchronization</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 7 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>The Problem: Race Condition <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Video ka setup: Counter class + 2 threads, ek hi shared object. Result hamesha 2000 aana chahiye... par aata kyun nahi?</p>
+
+    <div class="card">
+      <h3>Setup (video wala)</h3>
+      <div class="code">
+        <div class="code-head"><span>Counter.java + Test.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">Counter</span> {
+    <span class="kw">private int</span> count = 0;
+
+    <span class="kw">public void</span> <span class="mt">increment</span>() {
+        count++;                        <span class="cm">// 1000 baar call hoga har thread se</span>
+    }
+
+    <span class="kw">public int</span> <span class="mt">getCount</span>() { <span class="kw">return</span> count; }
+}
+
+<span class="kw">class</span> <span class="ty">MyThread</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="kw">private</span> <span class="ty">Counter</span> counter;
+    <span class="kw">public</span> <span class="ty">MyThread</span>(<span class="ty">Counter</span> counter) { <span class="kw">this</span>.counter = counter; }
+
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 1000; i++) counter.increment();
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Test</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">Counter</span> counter = <span class="kw">new</span> <span class="ty">Counter</span>();   <span class="cm">// EK hi object — shared!</span>
+        <span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>(counter);
+        <span class="ty">MyThread</span> t2 = <span class="kw">new</span> <span class="ty">MyThread</span>(counter);
+        t1.start(); t2.start();
+        t1.join(); t2.join();                <span class="cm">// dono khatam hone tak wait — phir hi print</span>
+        System.out.println(counter.getCount());
+    }
+}</pre>
+      </div>
+      <ul class="clean">
+        <li>Expectation: 1000 + 1000 = <span class="hl">2000</span></li>
+        <li>Reality: <span class="hl" style="color:var(--bad)">1846, 1764, kabhi kabhi 2000</span> — har run pe alag!</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Kyun hota hai? — count++ ki sachchai</h3>
+      <p><code class="inline">count++</code> ek line hai, par <span class="hl">3 operations</span> hain: <b>read</b> count → <b>increment</b> → <b>write</b> back.</p>
+      <ul class="clean">
+        <li>Maan lo count ki value <b>101</b> hai</li>
+        <li>t1 ne <b>101 read</b> kiya... usi waqt t2 ne bhi <b>101 read</b> kiya (dono ko same mila!)</li>
+        <li>t1 ne 102 likha, t2 ne bhi 102 likha — <span class="hl">2 increments hue par value sirf 1 badhi</span></li>
+        <li>Jab aisa "collision" hua, ek increment <b>lost</b> — isliye 2000 se kam milta hai</li>
+      </ul>
+      <p class="hinglish">Do threads ki timing aapas mein takra gayi (race lagayi) — isliye result unpredictable. Kabhi 2000 mila kyunki us run mein kahani takrayi hi nahi.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The Fix: synchronized <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>1. Synchronized Method</h3>
+      <div class="code">
+        <div class="code-head"><span>Counter.java — FIXED</span></div>
+        <pre><span class="kw">class</span> <span class="ty">Counter</span> {
+    <span class="kw">private int</span> count = 0;
+
+    <span class="kw">public synchronized void</span> <span class="mt">increment</span>() {  <span class="cm">// ← bas yeh keyword!</span>
+        count++;
+    }
+}</pre>
+      </div>
+      <ul class="clean">
+        <li>Ab <span class="hl">ek time pe EK hi thread</span> increment() chala sakta hai</li>
+        <li>Jab ek thread andar hai, doosra <b>wait</b> karta hai — pehla nikle tabhi doosra andar jaata hai</li>
+        <li>Result: <span class="hl" style="color:var(--good)">HAMESHA 2000</span> — guaranteed, har run pe</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>2. Synchronized Block</h3>
+      <p>Agar poora method synchronize nahi karna, sirf <span class="hl">critical part</span> karna hai:</p>
+      <div class="code">
+        <div class="code-head"><span>Alternative</span></div>
+        <pre><span class="kw">public void</span> <span class="mt">increment</span>() {
+    <span class="cm">// ...other non-critical kaam...</span>
+    <span class="kw">synchronized</span> (<span class="kw">this</span>) {          <span class="cm">// sirf ye block lock hota hai</span>
+        count++;
+    }
+    <span class="cm">// ...other non-critical kaam...</span>
+}</pre>
+      </div>
+      <ul class="clean">
+        <li><code class="inline">this</code> ka matlab: <span class="hl-p">jis instance pe method call hua hai</span> uska lock</li>
+        <li>Multiple objects hain toh unki kahani <b>independent</b> chalegi — har object ka apna lock</li>
+        <li>Benefit: non-critical code parallel chalta rahega, sirf critical section serial</li>
+      </ul>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h3></h3><h2>Terminology — 4 Terms <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Interview ke liye ye 4 terms yaad rakho — sab isi ek example se aate hain.</p>
+
+    <div class="card">
+      <div class="term-grid">
+        <div class="term t-yellow">
+          <div class="t-name">⚠️ Race Condition</div>
+          <div class="t-desc">Multiple threads shared resource pe kaam kar rahe hain aur unki <b>timing aise overlap</b> ho gayi ki result <b>unpredictable</b> ho gaya (1846 wali problem)</div>
+        </div>
+        <div class="term t-blue">
+          <div class="t-name">🔒 Critical Section</div>
+          <div class="t-desc">Program ka <b>wo part jahan shared resource access/modify</b> hota hai — yahan count++ wala method. Ise "dhyaan se" (critically) handle karna hota hai</div>
+        </div>
+        <div class="term t-green">
+          <div class="t-name">🤝 Mutual Exclusion</div>
+          <div class="t-desc">Mutual (threads ke beech ka rishta) + Exclusion (rokna) = <b>ek time pe sirf ek thread</b> critical section access kar sake. synchronized se achieve hota hai</div>
+        </div>
+        <div class="term t-red">
+          <div class="t-name">🎯 The Goal</div>
+          <div class="t-desc">Race condition ko <b>synchronized</b> se hatao → mutual exclusion ensure karo → predictable result (hamesha 2000)</div>
+        </div>
+      </div>
+      <p class="hinglish">Ek line mein: <b>shared resource + multiple threads = race condition. Fix = synchronized (mutual exclusion) on critical section.</b></p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Variation 1: Bank Account <span class="badge bonus">BONUS PRACTICE</span></h2></div>
+    <p class="sec-sub">Same concept, real-world scenario — pehle khud predict karo, phir answer dekho.</p>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>BankAccount.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">BankAccount</span> {
+    <span class="kw">private double</span> balance = 1000;
+
+    <span class="kw">public void</span> <span class="mt">withdraw</span>(<span class="kw">double</span> amount) {
+        <span class="kw">if</span> (balance &gt;= amount) {              <span class="cm">// check</span>
+            balance = balance - amount;         <span class="cm">// aur update — DANGER!</span>
+        }
+    }
+    <span class="kw">public double</span> <span class="mt">getBalance</span>() { <span class="kw">return</span> balance; }
+}</pre>
+      </div>
+      <p>Scenario: Account mein <b>₹1000</b> hai. Do threads simultaneously <b>₹800 withdraw</b> karte hain.</p>
+      <ul class="clean">
+        <li><b>Expected (single-thread logic):</b> pehla withdrawal chal jata (1000-800=200), doosra fail hota (200 &lt; 800)</li>
+        <li><b>Race condition mein kya hoga?</b> Dono ne ek saath <code class="inline">balance &gt;= 800</code> check kiya — dono ko <b>true</b> mila (balance abhi bhi 1000 hai!) — dono ne withdraw kar diya</li>
+        <li>Result: <span class="hl" style="color:var(--bad)">-600 balance!</span> Bank gaya, concept samajh gaya 😄</li>
+      </ul>
+      <p><b>Fix:</b> <code class="inline">public synchronized void withdraw(...)</code> — ab check+update <span class="hl">atomic</span> ho jayega, ek time pe ek thread. Doosra thread tab check karega jab balance already 200 ho chuka hoga → withdrawal reject.</p>
+      <p class="hinglish">Note: yahan critical section = <b>check + update dono milake</b>. Agar sirf update synchronized ho aur check nahi, toh bhi race rahegi — pura "check-then-act" sequence lock hona chahiye!</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Variation 2: Movie Tickets <span class="badge bonus">BONUS PRACTICE</span></h2></div>
+    <p class="sec-sub">Isme synchronized BLOCK ka real use case hai — poora method nahi, sirf critical part.</p>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>BookMyShow.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">TicketBooking</span> {
+    <span class="kw">private int</span> seatsAvailable = 2;              <span class="cm">// sirf 2 seats!</span>
+    <span class="kw">private</span> <span class="ty">Object</span> lock = <span class="kw">new</span> <span class="ty">Object</span>();
+
+    <span class="kw">public void</span> <span class="mt">bookSeat</span>(String user) {
+        System.out.println(user + <span class="st">" booking dekh raha hai..."</span>);  <span class="cm">// slow UI ka kaam</span>
+        <span class="kw">try</span> { Thread.sleep(100); } <span class="kw">catch</span> (Exception e) {}      <span class="cm">// network delay</span>
+
+        <span class="kw">synchronized</span> (lock) {                      <span class="cm">// CRITICAL PART only</span>
+            <span class="kw">if</span> (seatsAvailable &gt; 0) {
+                System.out.println(user + <span class="st">" ne seat le li! 🎟️"</span>);
+                seatsAvailable--;
+            } <span class="kw">else</span> {
+                System.out.println(user + <span class="st">" ke liye koi seat nahi 😢"</span>);
+            }
+        }
+    }
+}</pre>
+      </div>
+      <p>3 threads (Amit, Priya, Rahul) ek saath book karte hain, sirf <b>2 seats</b> hain:</p>
+      <ul class="clean">
+        <li>Bina synchronized: teeno ne <code class="inline">seatsAvailable &gt; 0</code> ek saath check kiya, teeno ko 2 dikha, <b>teeno ne book kar liya</b> — 2 seats mein 3 bookings! Overbooking 🚨</li>
+        <li>Synchronized block ke saath: booking decision (check + decrement) serial hota hai — pehle do ko seat, teesre ko "koi seat nahi"</li>
+        <li>Upar wala "network delay" wala code <b>lock ke bahar</b> hai — isliye wo part parallel chalta rahega, performance bhi achhi</li>
+      </ul>
+      <p class="hinglish">Isi liye synchronized <b>block</b> usefUL hai: jitna chhota critical section, utna better performance — lock sirf zaroori jagah.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Predict the Output <span class="badge bonus">BONUS</span></h2></div>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="ty">Counter</span> c1 = <span class="kw">new</span> <span class="ty">Counter</span>();   <span class="cm">// synchronized increment()</span>
+<span class="ty">Counter</span> c2 = <span class="kw">new</span> <span class="ty">Counter</span>();   <span class="cm">// ALAG object!</span>
+
+<span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>(c1);  <span class="cm">// c1 pe 1000 increments</span>
+<span class="ty">MyThread</span> t2 = <span class="kw">new</span> <span class="ty">MyThread</span>(c2);  <span class="cm">// c2 pe 1000 increments</span>
+t1.start(); t2.start();
+t1.join(); t2.join();
+System.out.println(c1.getCount() + <span class="st">" "</span> + c2.getCount());</pre>
+      </div>
+      <div class="predict-opts" id="predict1" style="display:flex;flex-direction:column;gap:8px;">
+        <button class="opt" onclick="checkPredict(this,'predict1','A')">A) Kabhi "1000 1000", kabhi kam — race condition</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','B')">B) Hamesha "1000 1000"</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','C')">C) Hamesha "2000 2000"</button>
+      </div>
+      <div class="expl" id="predict1-expl"><b>Answer: B</b> — do ALAG objects hain, koi sharing hi nahi hai! Har counter apne apne 1000 increments karega. (Agar same object hota, tab synchronized kaam aata — race ki wajah se hi toh problem hoti hai.) Locks <b>per-object</b> hote hain — different objects = different locks = koi conflict nahi, koi zaroorat bhi nahi.</div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/10</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <section id="s8" data-checkpoint="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">8 questions.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s8">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Master Synchronization & the synchronized Keyword") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'mt-revision-v7';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+function checkPredict(btn, parentId, chosen) {
+  const parent = document.getElementById(parentId);
+  const correct = 'B';
+  parent.querySelectorAll('.opt').forEach(o => o.disabled = true);
+  if (chosen === correct) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.opt').forEach(o => {
+      if (o.getAttribute('onclick').includes("'B'")) o.classList.add('correct');
+    });
+  }
+  document.getElementById(parentId + '-expl').classList.add('show');
+}
+
+let CARDS = [
+  { q: 'Race condition kya hai?', a: 'Multiple threads <b>shared resource</b> pe kaam kar rahe hon aur <b>timing overlap</b> ho jaye → result <b>unpredictable</b>' },
+  { q: 'Video wale Counter example mein kya hua tha?', a: '2 threads × 1000 increments = 2000 expect kiya, par <b>1846/1764</b> jaisi random values aayi — count++ ke collisions se increments <b>lost</b>' },
+  { q: 'count++ ek operation hai ya multiple?', a: '<b>3 operations</b>: read → increment → write. Isi beech doosra thread read kar leta hai — collision!' },
+  { q: 'synchronized keyword kya karta hai?', a: '<b>Ek time pe sirf ek thread</b> us method/block ko access kar sakta hai — doosra wait karta hai (<b>mutual exclusion</b>)' },
+  { q: 'Synchronized method vs synchronized block?', a: 'Method = poora lock. Block = <b>sirf critical part</b> lock (<code>synchronized(this){...}</code>) — non-critical code parallel chalta hai' },
+  { q: 'synchronized(this) mein "this" kya hai?', a: '<b>Current instance ka lock</b> — per-object locking. Alag objects = alag locks = independent execution' },
+  { q: 'Critical section kya hai?', a: 'Program ka wo part jahan <b>shared resource access/modify</b> hota hai (jaise count++ wala method)' },
+  { q: 'Mutual exclusion kya hai?', a: 'Mutual (threads ka rishta) + Exclusion (rokna) = <b>ek time pe sirf ek thread</b> critical section mein' },
+  { q: 'Bank account example mein race condition kya thi?', a: 'Do threads ne ek saath <b>balance check kiya</b>, dono ko paise mile — balance <b>negative</b> ho gaya. Fix: check+update dono synchronized' },
+  { q: 'Kya do alag-alag objects ke synchronized methods ek saath chal sakte hain?', a: '<b>Haan!</b> Locks <b>per-object</b> hote hain — alag objects, alag locks, koi blocking nahi' }
+];
+let fcIdx = 0;
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+const QUIZ = [
+  {
+    q: 'Race condition kab hoti hai?',
+    opts: ['Ek thread bohot fast chal raha ho', 'Multiple threads shared resource pe kaam karein aur timing overlap ho', 'Heap memory full ho jaye', 'Thread daemon ho'],
+    ans: 1,
+    ex: 'Shared resource + concurrent access + timing ki takkar = <b>unpredictable result</b>.'
+  },
+  {
+    q: 'count++ actually kitne operations hai?',
+    opts: ['1 — atomic hai', '2 — read aur write', '3 — read, increment, write', 'Depends on JVM'],
+    ans: 2,
+    ex: '<b>3 operations</b> — isi beech doosra thread read kar sakta hai, isliye collision hota hai.'
+  },
+  {
+    q: 'Video mein 2000 ki jagah 1846 kyun aaya?',
+    opts: ['Loop galat tha', 'join() nahi lagaya tha', 'Do threads ne same value read+write ki — kuch increments lost', 'CPU ka bug tha'],
+    ans: 2,
+    ex: 'Dono threads ne ek hi time pe same count padha, dono ne same value likhi — <b>increments lost</b>.'
+  },
+  {
+    q: 'synchronized ka core promise?',
+    opts: ['Threads fast hote hain', 'Ek time pe sirf ek thread critical section mein', 'Sab threads band ho jate hain', 'Memory bachti hai'],
+    ans: 1,
+    ex: '<b>Mutual exclusion</b> — ek thread andar, baaki wait.'
+  },
+  {
+    q: 'Synchronized block kab use karte hain method ki jagah?',
+    opts: ['Kabhi nahi', 'Jab sirf code ka chhota critical part lock karna ho', 'Jab threads zyada hon', 'Jab object nahi hai'],
+    ans: 1,
+    ex: 'Block = <b>fine-grained locking</b> — non-critical code parallel chalta rahega.'
+  },
+  {
+    q: 'Critical section kya hai?',
+    opts: ['Program ka sabse lamba method', 'Wo part jahan shared resource access/modify ho', 'Jahan threads create hote hain', 'main() method'],
+    ans: 1,
+    ex: 'Shared data jo touch hota hai — wahi <b>critical section</b>, wahi synchronized chahiye.'
+  },
+  {
+    q: 'Bank wale variation mein bina sync ke kya hota?',
+    opts: ['Ek hi withdrawal hota', 'Dono threads ko balance sufficient dikhta — negative balance tak', 'Exception aati', 'Kuch nahi hota'],
+    ans: 1,
+    ex: 'Check-then-act race: dono ne purana balance dekha, dono ne paisa nikala — <b>bank doob gaya</b>.'
+  },
+  {
+    q: 'Do alag Counter objects, synchronized increment(), dono pe alag threads. Result?',
+    opts: ['Race condition aayega', 'Hamesha sahi — koi sharing hi nahi, per-object locks', 'Deadlock hoga', 'Compile error'],
+    ans: 1,
+    ex: 'Alag objects = koi shared resource nahi. Locks bhi <b>per-object</b> — independent, hamesha correct.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Synchronization clear hai.';
+    else if (score >= 5) msg = 'Badhiya! Ek-do points revise kar lo.';
+    else msg = 'Race se bacho — notes + flashcards dobara dekho!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Locks &amp; ReentrantLock — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(11,15,23,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 2px 9px; }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline { background: #0d1424; border: 1px solid var(--border); padding: 1px 7px; border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle; }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+  .run-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 7px; padding: 4px 14px; font-size: 11.5px; font-weight: 700; }
+
+  .console { background: #050810; border-top: 1px solid var(--border); padding: 12px 16px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; display: none; }
+  .console .cline { opacity: 0; transform: translateY(4px); transition: all .25s; color: #a7f3d0; }
+  .console .cline.sys { color: var(--muted); }
+  .console .cline.bad { color: var(--bad); }
+  .console .cline.good { color: var(--good); font-weight: 700; }
+  .console .cline.show { opacity: 1; transform: none; }
+  .console-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); }
+
+  .timeline { margin: 14px 0; }
+  .tl-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tl-label { min-width: 75px; font-size: 12px; font-weight: 800; font-family: ui-monospace, Menlo, monospace; }
+  .tl-track { flex: 1; min-width: 200px; height: 34px; border-radius: 8px; background: #0a0f1c; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .tl-seg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 700; color: #0b0f17; overflow: hidden; white-space: nowrap; }
+  .tl-t1 { background: var(--accent); color: white; }
+  .tl-t2 { background: var(--warn); color: #0b0f17; }
+  .tl-wait { background: repeating-linear-gradient(45deg, #263148, #263148 6px, #1a2338 6px, #1a2338 12px); color: var(--muted); }
+  .tl-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; font-family: ui-monospace, monospace; }
+
+  .count-demo { display: flex; align-items: center; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  .cd-step { flex: 1; min-width: 105px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; }
+  .cd-step .cd-act { font-size: 11.5px; font-weight: 700; color: #c7d2e4; }
+  .cd-step .cd-count { font-size: 22px; font-weight: 800; color: var(--accent); margin-top: 2px; }
+  .cd-step.locked .cd-count { color: var(--good); }
+  .cd-step.zero .cd-count { color: var(--muted); }
+  .cd-arrow { color: var(--muted); font-size: 16px; font-weight: 700; }
+  .cd-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 700; margin-top: 8px; }
+  .cd-btn.reset { background: var(--card2); border: 1px solid var(--border); color: var(--muted); }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card { position: relative; width: 100%; min-height: 220px; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1); }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 34px; text-align: center; }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 11px 15px; margin-bottom: 8px; font-size: 14px; font-family: inherit; transition: all .15s; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl { display: none; margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  .expl.show { display: block; }
+  .quiz-score { display: none; text-align: center; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px; }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Java Locks — ReentrantLock</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 8 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Locking: The Foundation <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">The notebook analogy from the video — three kids, one notebook, no supervisor.</p>
+
+    <div class="card">
+      <h3>The analogy</h3>
+      <ul class="clean">
+        <li><b>Notebook</b> = shared resource. <b>Three kids</b> = three threads (t1, t2, t3)</li>
+        <li>Without any rule: everyone writes at once → <span class="hl" style="color:var(--bad)">jumbled, unreadable mess</span></li>
+        <li>With <code class="inline">synchronized</code>: only <span class="hl">one kid writes at a time</span> — whoever holds access puts a "lock" on it</li>
+        <li>When that kid finishes (or the teacher/scheduler switches turns), the <span class="hl">lock passes to the next thread</span></li>
+      </ul>
+      <p class="hinglish">This is exactly what the synchronized keyword was doing in the Counter example — locking the shared resource so only one thread accesses it at a time.</p>
+    </div>
+
+    <div class="card">
+      <h3>Two types of locks</h3>
+      <table>
+        <tr><th></th><th>Intrinsic (Implicit)</th><th>Explicit (Manual)</th></tr>
+        <tr><td>What it is</td><td><b>Built into every Java object</b> — invisible, always there</td><td>A <code class="inline">Lock</code> object <b>you create yourself</b></td></tr>
+        <tr><td>How to use</td><td>Just use the <code class="inline">synchronized</code> keyword — lock/unlock happen automatically</td><td>Call <code class="inline">lock()</code> / <code class="inline">unlock()</code> yourself</td></tr>
+        <tr><td>Control</td><td>None — no control over who goes first, how long anyone holds it</td><td><b>Full control</b> — when to lock, when to unlock, timeouts, attempts</td></tr>
+        <tr><td>Advanced</td><td>—</td><td>tryLock with timeout, interruptible waiting, reentrancy</td></tr>
+      </table>
+      <p class="hinglish">synchronized automatic hai — lekin control zero. Explicit locks give you the steering wheel.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The Problem with synchronized <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">The bank account example — where synchronized breaks down.</p>
+
+    <div class="card">
+      <h3>The setup</h3>
+      <div class="code">
+        <div class="code-head"><span>BankAccount.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">BankAccount</span> {
+    <span class="kw">private int</span> balance = 100;
+    <span class="kw">private final</span> <span class="ty">Lock</span> lock = <span class="kw">new</span> <span class="ty">ReentrantLock</span>();  <span class="cm">// later — first version uses synchronized</span>
+
+    <span class="kw">public synchronized void</span> <span class="mt">withdraw</span>(<span class="kw">int</span> amount) {
+        System.out.println(Thread.currentThread().getName() + <span class="st">" attempting withdrawal "</span> + amount);
+        <span class="kw">if</span> (balance &gt;= amount) {
+            System.out.println(Thread.currentThread().getName() + <span class="st">" proceeding with withdrawal"</span>);
+            <span class="kw">try</span> {
+                Thread.sleep(3000);          <span class="cm">// simulates a slow DB transaction</span>
+            } <span class="kw">catch</span> (InterruptedException e) { }
+            balance -= amount;
+            System.out.println(Thread.currentThread().getName() + <span class="st">" completed withdrawal. Remaining: "</span> + balance);
+        } <span class="kw">else</span> {
+            System.out.println(Thread.currentThread().getName() + <span class="st">" insufficient balance"</span>);
+        }
+    }
+}</pre>
+      </div>
+      <ul class="clean">
+        <li>Two threads, <b>same account</b> (₹100), both withdraw ₹50</li>
+        <li>t1 acquires the synchronized lock and enters the 3-second "transaction"</li>
+        <li>t2 is now <span class="hl" style="color:var(--bad)">blocked — waiting indefinitely</span></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color: rgba(248,113,113,.35);">
+      <h3>The core issue: indefinite waiting</h3>
+      <div class="timeline">
+        <div class="tl-row">
+          <div class="tl-label">Thread-1</div>
+          <div class="tl-track"><div class="tl-seg tl-t1" style="left:0%;width:75%;">lock held — transaction (3s)</div></div>
+        </div>
+        <div class="tl-row">
+          <div class="tl-label">Thread-2</div>
+          <div class="tl-track"><div class="tl-seg tl-wait" style="left:0%;width:75%;">waiting... waiting... waiting...</div><div class="tl-seg tl-t2" style="left:75%;width:25%;">finally runs</div></div>
+        </div>
+        <div class="tl-scale"><span>0s</span><span>3s</span><span>6s</span></div>
+      </div>
+      <ul class="clean">
+        <li>That sleep simulates a database call — normally 3 seconds, but on a bad day it could take <b>10 seconds, an hour, anything</b></li>
+        <li>t2 has <span class="hl">no timeout, no clue, no escape</span> — it just waits forever</li>
+        <li>synchronized gives you <b>zero control</b> over this: who goes first, how long they hold the lock — nothing</li>
+      </ul>
+      <p class="hinglish">Washroom analogy from the video: the guy inside says "it will take time" — the guy outside has no option but to stand there indefinitely. That's the problem to fix.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>

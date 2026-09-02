@@ -1,0 +1,224 @@
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Multithreading Basics</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 1 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>CPU aur Core <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Sabse basic se — jaise 5th class mein padhte the.</p>
+
+    <div class="card">
+      <h3>CPU (Central Processing Unit)</h3>
+      <ul class="clean">
+        <li><span class="hl">Brain of the computer</span> — jo bhi program mein likha hai (arithmetic, logic, if-else...), wo <b>CPU ke andar hi run</b> hota hai</li>
+        <li>Jaise tumhari baat samajhne wala tumhara brain hai — waise program samajhne/chalane wala CPU</li>
+        <li>Examples: <span class="hl-p">Intel, AMD</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Core</h3>
+      <ul class="clean">
+        <li>Core is an <span class="hl">individual processing unit</span> — CPU ke andar actual processing <b>core ke andar</b> hoti hai</li>
+        <li>Pehle CPU mein <b>ek hi core</b> hota tha, ab <span class="hl-p">multiple cores</span> aate hain</li>
+        <li><span class="hl">Quad-core</span> = 4 cores = 4 kaam ek saath (browser, music, document, background kaam)</li>
+        <li><span class="hl">Octa-core</span> = 8 cores (video mein AMD Ryzen 9 ka example diya)</li>
+        <li>Jitne zyada core — <b>utna better</b></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color: rgba(108,140,255,.35);">
+      <h3>Poora structure ek nazar mein</h3>
+      <div class="hier">
+        <div class="hier-box hb-cpu"><div class="hb-t">CPU (Brain of Computer)</div><div class="hb-d">Intel / AMD / Apple M-series</div></div>
+        <div class="hier-arrow">↓ andar hote hain</div>
+        <div class="hier-cores">
+          <div class="hier-box hb-core"><div class="hb-t">Core 1</div><div class="hb-d">processing unit</div></div>
+          <div class="hier-box hb-core"><div class="hb-t">Core 2</div><div class="hb-d">processing unit</div></div>
+          <div class="hier-box hb-core"><div class="hb-t">Core 3</div><div class="hb-d">processing unit</div></div>
+          <div class="hier-box hb-core"><div class="hb-t">Core 4</div><div class="hb-d">processing unit</div></div>
+        </div>
+      </div>
+      <p class="hinglish">CPU ka apna koi kaam nahi — saara kaam core ke andar hota hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Program, Process, Thread <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Program</h3>
+      <ul class="clean">
+        <li><span class="hl">Set of instructions</span> — jo kaam karana hai wo instructions likhi hui hain, bas</li>
+        <li>High level pe: Microsoft Word ek program hai, OBS Studio (jisse video record hota hai) ek program hai</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Process</h3>
+      <ul class="clean">
+        <li>Process = <span class="hl">running instance of a program</span></li>
+        <li>Program ko jab chalate hain, toh <span class="hl-p">Operating System uski process start</span> kar deta hai</li>
+        <li>Word pe double-click kiya → OS ne Word ki process start kar di</li>
+      </ul>
+      <p class="hinglish">Program = recipe (kagaz pe likha), Process = khana banate waqt wo recipe actually use ho rahi hai.</p>
+    </div>
+
+    <div class="card">
+      <h3>Thread</h3>
+      <ul class="clean">
+        <li>Thread is the <span class="hl">smallest unit of execution within a process</span></li>
+        <li>Ek process mein <span class="hl-p">multiple threads</span> ho sakte hain — jo <b>kuch resources share</b> karte hain par <b>independently run</b> kar sakte hain</li>
+        <li><b>MS Word example:</b> ek thread typed words screen pe dikha raha hai, doosra <span class="hl">spell-checker</span> chala raha hai (mistake pe underline), teesra <span class="hl">auto-save</span> kar raha hai — sab ek saath!</li>
+        <li><b>Browser example:</b> 5 tabs khule hain toh 5 threads — har tab independent, ek tab doosre pe depend nahi</li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color: rgba(251,191,36,.35);">
+      <h3>Full hierarchy</h3>
+      <div class="hier">
+        <div class="hier-procs">
+          <div class="hier-box hb-proc"><div class="hb-t">Process: firefox.exe</div><div class="hb-d">browser program running</div></div>
+          <div class="hier-box hb-proc"><div class="hb-t">Process: MS Word</div><div class="hb-d">word program running</div></div>
+        </div>
+        <div class="hier-arrow">↓ firefox.exe ke andar threads</div>
+        <div class="hier-thrs">
+          <div class="hier-box hb-thr"><div class="hb-t">Thread 1</div><div class="hb-d">page render</div></div>
+          <div class="hier-box hb-thr"><div class="hb-t">Thread 2</div><div class="hb-d">JavaScript</div></div>
+          <div class="hier-box hb-thr"><div class="hb-t">Thread 3</div><div class="hb-d">user input</div></div>
+          <div class="hier-box hb-thr"><div class="hb-t">Thread 4</div><div class="hb-d">downloads</div></div>
+        </div>
+      </div>
+      <p class="hinglish">Browser multithreading use karke hi responsive banta hai — render, JS, input alag-alag threads pe.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Multitasking vs Multithreading <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Ye dono alag cheezein hain — level alag hai.</p>
+
+    <div class="card">
+      <h3>Multitasking (higher level — processes)</h3>
+      <ul class="clean">
+        <li>OS ki ability — <span class="hl">multiple processes simultaneously</span> chalana</li>
+        <li>Example: browser + VLC player (music) + download manager + IDE — sab ek saath</li>
+        <li><b>Single core</b> pe bhi multitasking hoti thi (purane zamane mein!) — <span class="hl-p">rapid switching</span> se, jaise aadmi do kaam bohot fast switch kare toh lagta hai dono ek saath kar raha hai</li>
+        <li><b>Multi-core</b> pe — <span class="hl">true parallel execution</span>, tasks cores pe distributed hote hain</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Multithreading (andar — threads)</h3>
+      <ul class="clean">
+        <li><span class="hl">Ek single process ke andar</span> multiple threads <b>concurrently</b> chalana — yahi multithreading hai</li>
+        <li>Multitasking process level pe hoti hai, multithreading <span class="hl-p">thread level pe (more granular)</span></li>
+        <li>Multithreading, multitasking ki <b>efficiency enhance</b> karti hai — bade tasks ko chhote sub-tasks (threads) mein todke, CPU ki abilities ka better use</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Comparison table</h3>
+      <table>
+        <tr><th></th><th>Multitasking</th><th>Multithreading</th></tr>
+        <tr><td>Level</td><td><b>Processes</b> (OS ka primary unit)</td><td><b>Threads</b> (process ka smallest unit)</td></tr>
+        <tr><td>Kahan</td><td>Alag-alag programs/apps ke beech</td><td>Ek hi application/process ke andar</td></tr>
+        <tr><td>Resources</td><td>Alag programs — alag memory space ho sakti hai</td><td>Same process ke threads resources <b>share</b> karte hain</td></tr>
+        <tr><td>Goal</td><td>Ek saath multiple programs chalana</td><td>Ek app ke andar multiple tasks — performance + responsiveness</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Real-life example (video wala — best remember this!)</h3>
+      <p><b>Manager + Teams:</b> Manager ke under 4 teams hain, har team pe alag project — ye <span class="hl">multitasking</span> hai (4 kaam high level pe ek saath). Ab ek team ke andar dekho — usme kai employees ek hi project pe saath kaam kar rahe hain — wo employees hain <span class="hl-p">threads</span>, aur ye hai <span class="hl">multithreading</span>.</p>
+      <p class="hinglish">Doosra example: video upload karna = ek process. Usme thumbnail banana, editing, description — ye alag tasks/threads. Kaam divide kiya, sab ek saath.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Time Slicing & Context Switching <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Time Slicing</h3>
+      <ul class="clean">
+        <li>CPU time ko <span class="hl">chhote intervals mein divide</span> karna — in intervals ko kehte hain <span class="hl-p">time slices / quantas</span></li>
+        <li><b>OS scheduler</b> ye time slices alag-alag processes aur threads ko allocate karta hai</li>
+        <li>Priorities ka bhi khel hai — high priority ko zyada time, low priority ko kam</li>
+        <li><b>Purpose:</b> ek hi CPU toh hai, bahut saari processes hain — <b>sabko chalne ka mauka mile</b>, koi bhooka na rahe</li>
+      </ul>
+      <p class="hinglish">Jaise apna din plan karna: itne ghante ye kaam, itne ghante wo kaam. CPU ka time bhi aise hi divide hota hai.</p>
+    </div>
+
+    <div class="card">
+      <h3>Context Switching</h3>
+      <ul class="clean">
+        <li>Process: <span class="hl">currently running process/thread ki state save</span> karna, aur <span class="hl-p">next wali ki state load</span> karna</li>
+        <li>Matlab: jo is moment chal raha hai usko pause karo (state save), doosri ko chalao, phir wapas aao <b>usi state se</b> jahan ruka tha</li>
+        <li><b>Kab hota hai?</b> Jab kisi process/thread ka <span class="hl">time slice expire</span> ho jata hai — tab OS scheduler context switch karta hai</li>
+        <li><b>Purpose:</b> efficiency — cores pe tasks divide karna, sab kuch smooth chalana</li>
+      </ul>
+      <p class="hinglish">Important: pause ki hui cheez shuru se nahi chalegi — <b>jahan ruki thi wahi se</b> resume hogi. Data save hota hai.</p>
+    </div>
+
+    <div class="card">
+      <h3>Single core vs Multi core (recap)</h3>
+      <table>
+        <tr><th></th><th>Single Core</th><th>Multi Core</th></tr>
+        <tr><td>Threads + Processes</td><td>OS scheduler <b>time slicing</b> + <b>context switching</b> se manage karta hai</td><td><b>True parallel</b> — different cores pe, OS scheduler tasks distribute karta hai</td></tr>
+        <tr><td>Reality</td><td>Illusion of simultaneity</td><td>Asli mein simultaneous</td></tr>
+      </table>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/12</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">10 questions — foundation strong!</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Multithreading Basics: CPU, Core, Program, Process, Thread & much more") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread vs Runnable — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(11,15,23,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 2px 9px; }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline { background: #0d1424; border: 1px solid var(--border); padding: 1px 7px; border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle; }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); }
+
+  .verdict { background: linear-gradient(135deg, rgba(108,140,255,.12), rgba(45,212,191,.08)); border: 1px solid rgba(108,140,255,.4); border-radius: var(--radius); padding: 20px 24px; margin: 18px 0; text-align: center; }
+  .verdict .big { font-size: 17px; font-weight: 800; }
+  .verdict .sub { font-size: 13.5px; color: var(--muted); margin-top: 6px; }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card { position: relative; width: 100%; min-height: 220px; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1); }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 34px; text-align: center; }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 11px 15px; margin-bottom: 8px; font-size: 14px; font-family: inherit; transition: all .15s; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl { display: none; margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  .expl.show { display: block; }
+  .quiz-score { display: none; text-align: center; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px; }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Thread vs Runnable</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 5 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Kab kya use karein? <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Dono tarike dekh chuke hain — ab sawal: kaunsa kab?</p>
+
+    <div class="card">
+      <h3>The Rule</h3>
+      <ul class="clean">
+        <li>Agar class <span class="hl">already kisi doosri class ko extend</span> kar rahi hai → <span class="hl">implements Runnable</span> karna padega</li>
+        <li>Kyunki Java mein <span class="hl-p">multiple inheritance nahi hota</span> — ek class sirf ek hi class extend kar sakti hai</li>
+        <li>Waise (agar koi constraint nahi hai) → <span class="hl">koi bhi use kar sakte ho</span></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Video ka example — problem wala case</h3>
+      <p style="margin-bottom:4px;"><code class="inline">MyClass</code> already <code class="inline">A</code> ko extend kar rahi hai. Ab iska thread banana hai:</p>
+      <div class="code">
+        <div class="code-head"><span>MyClass.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">A</span> { }
+
+<span class="cm">// MyClass already A ko extend kar raha hai...</span>
+<span class="kw">class</span> <span class="ty">MyClass</span> <span class="kw">extends</span> <span class="ty">A</span> <span class="kw">implements</span> <span class="ty">Runnable</span> {  <span class="cm">// solution!</span>
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() { <span class="cm">// thread ka kaam</span> }
+}</pre>
+      </div>
+      <p>Agar yahan <code class="inline">extends Thread</code> likhte — toh compiler error: <span class="hl-p">class cannot extend multiple classes</span>. Tab bhi IDE khud suggestion deta hai: <b>"implement the run method"</b> — matlab Runnable hi bacha hai.</p>
+      <p class="hinglish">Majboori tab hoti hai jab class pehle se kisi ko extend kar rahi ho — tab Runnable hi ek raasta hai.</p>
+    </div>
+
+    <div class="verdict">
+      <div class="big">Already extending something? → Runnable. Warna dono chalega.</div>
+      <div class="sub">Real projects mein bhi Runnable preferred hai (Video 3 ke bonus mein bhi discuss kiya tha)</div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Bonus: Full Comparison <span class="badge bonus">BONUS</span></h2></div>
+    <p class="sec-sub">Video ke main point ko expand karke poora comparison table.</p>
+
+    <div class="card">
+      <table>
+        <tr><th></th><th>extends Thread</th><th>implements Runnable</th></tr>
+        <tr><td>Inheritance</td><td>Thread extend = doosri class extend <b>nahi</b> kar sakte</td><td>Koi bhi class extend kar sakte ho</td></tr>
+        <tr><td>Multiple inheritance problem</td><td>Hai — blocked ho jaate ho</td><td>Nahi — interface kitne bhi implement kar sakte ho</td></tr>
+        <tr><td>start() access</td><td>Direct — <code class="inline">obj.start()</code></td><td><code class="inline">new Thread(obj).start()</code></td></tr>
+        <tr><td>Design angle</td><td>IS-A Thread (thread banna hi maksad)</td><td>Thread sirf "worker" hai, kaam alag object mein</td></tr>
+        <tr><td>Kab zaroori</td><td>Free choice hai toh chalega</td><td><b>Zabardasti</b> — jab class already kisi ko extend kar rahi ho</td></tr>
+        <tr><td>Preferred in practice</td><td>—</td><td><b>Haan — ye default choice hona chahiye</b></td></tr>
+      </table>
+      <p class="hinglish">Ek line mein: <b>Runnable = kaam (task)</b>, <b>Thread = kaam karane wala (worker)</b>. Kaam aur worker alag rakhna good design hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/6</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">5 questions — choti video, focused quiz.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Java Thread vs Runnable: The SHOCKING Truth!") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'mt-revision-v5';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+let CARDS = [
+  { q: 'Kab implements Runnable karna ZAROORI hai?', a: 'Jab class <b>already kisi doosri class ko extend</b> kar rahi ho — multiple inheritance nahi hota Java mein' },
+  { q: 'Java mein ek class kitni classes extend kar sakti hai?', a: '<b>Sirf ek</b> — multiple inheritance nahi hai (interfaces kitne bhi implement kar sakte ho)' },
+  { q: 'Agar koi constraint nahi hai toh?', a: '<b>Koi bhi use kar sakte ho</b> — dono kaam karte hain' },
+  { q: 'Practice mein kya prefer hota hai?', a: '<b>Runnable</b> — kaam (task) aur worker (Thread) alag rehte hain, flexibility milti hai' },
+  { q: 'Runnable wale case mein start() kaise call hota hai?', a: '<b>new Thread(runnableObj).start()</b> — Thread ka object banake' },
+  { q: 'Runnable = ?, Thread = ?', a: 'Runnable = <b>kaam (task)</b>, Thread = <b>kaam karane wala (worker)</b>' }
+];
+let fcIdx = 0;
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+const QUIZ = [
+  {
+    q: 'Class already kisi doosri class ko extend kar rahi hai. Thread kaise banayenge?',
+    opts: ['extends Thread', 'implements Runnable', 'dono nahi chalega', 'new Thread() direct'],
+    ans: 1,
+    ex: 'Multiple inheritance nahi hota — doosri class extend karke Thread <b>nahi</b> extend kar sakte. <b>Runnable</b> hi raasta hai.'
+  },
+  {
+    q: 'Video ke hisaab se kab Runnable use karna PADTA hai?',
+    opts: ['Hamesha', 'Kabhi nahi', 'Jab class already kisi ko extend kar rahi ho', 'Sirf interface ke saath'],
+    ans: 2,
+    ex: 'Majbori tab hoti hai jab extend ka option block ho — tab Runnable bacha hai.'
+  },
+  {
+    q: 'Agar koi inheritance constraint nahi hai toh?',
+    opts: ['Sirf Thread chalega', 'Sirf Runnable chalega', 'Koi bhi use kar sakte ho', 'Dono error denge'],
+    ans: 2,
+    ex: 'Video mein clearly bola — waise <b>koi sa bhi</b> use kar sakte ho.'
+  },
+  {
+    q: 'BONUS: Practice (real projects) mein kya preferred hai?',
+    opts: ['extends Thread', 'implements Runnable', 'dono barabar', 'depends on mood'],
+    ans: 1,
+    ex: '<b>Runnable</b> — design flexibility milti hai, task aur worker alag rehte hain.'
+  },
+  {
+    q: 'Runnable = task, Thread = ?',
+    opts: ['task', 'worker (jo task chalayega)', 'data', 'scheduler'],
+    ans: 1,
+    ex: 'Thread = <b>worker</b> jo task (Runnable) ko execute karta hai.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Choti video, clear concept.';
+    else if (score >= 3) msg = 'Badhiya! Ek-do points revise kar lo.';
+    else msg = 'Ek baar notes dobara dekho, phir try karo!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

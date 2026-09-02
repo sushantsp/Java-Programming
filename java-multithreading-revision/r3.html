@@ -1,0 +1,176 @@
+<script>
+const KEY = 'mt-revision-v1';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+let CARDS = [
+  { q: 'CPU kya hai?', a: '<b>Brain of the computer</b> — program ka saara execution (arithmetic, logic, if-else) CPU ke andar hota hai' },
+  { q: 'Core kya hai?', a: 'CPU ke andar <b>individual processing unit</b> — saari processing core ke andar hoti hai. Jitne zyada core, utna better' },
+  { q: 'Quad-core ka matlab?', a: '<b>4 cores</b> — 4 kaam ek saath (browser, music, doc, background)' },
+  { q: 'Program kya hai?', a: '<b>Set of instructions</b> — kaam karane wali likhi hui instructions. MS Word = program' },
+  { q: 'Process kya hai?', a: '<b>Running instance of a program</b> — program chalate hi OS uski process start kar deta hai' },
+  { q: 'Thread kya hai?', a: '<b>Smallest unit of execution within a process</b> — process ke andar chhota independent kaam' },
+  { q: 'MS Word ke threads ka example?', a: 'Typed words dikhana + <b>spell-checker</b> (underline) + <b>auto-save</b> — sab alag threads, ek saath' },
+  { q: 'Multitasking kya hai?', a: 'OS ki ability — <b>multiple processes simultaneously</b> chalana (higher level, process level pe)' },
+  { q: 'Multithreading kya hai?', a: '<b>Ek single process ke andar</b> multiple threads concurrently chalana (granular, thread level pe)' },
+  { q: 'Multitasking vs Multithreading — level?', a: 'Multitasking = <b>processes</b> (OS ka primary unit). Multithreading = <b>threads</b> (process ka smallest unit)' },
+  { q: 'Time Slicing kya hai?', a: 'CPU time ko <b>chhote intervals (time slices/quantas)</b> mein divide karna — OS scheduler alag processes/threads ko allocate karta hai' },
+  { q: 'Context Switching kya hai?', a: 'Current process/thread ki <b>state save</b> karna + next ki <b>state load</b> karna — time slice expire hone pe hota hai. Resume <b>usi point se</b> hota hai' },
+  { q: 'Single core pe multitasking kaise hoti hai?', a: '<b>Rapid switching (time sharing)</b> se — kaam bohot fast switch hote hain, lagta hai sab ek saath chal raha hai' },
+  { q: 'Multi core pe kya hota hai?', a: '<b>True parallel execution</b> — OS scheduler tasks ko cores pe distribute karta hai' }
+];
+let fcIdx = 0;
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+const QUIZ = [
+  {
+    q: 'Program ka actual execution kahan hota hai?',
+    opts: ['RAM mein', 'Hard disk pe', 'CPU (core) ke andar', 'GPU pe'],
+    ans: 2,
+    ex: 'CPU = brain of computer. Saara execution (arithmetic, logic) <b>CPU ke andar core</b> mein hota hai.'
+  },
+  {
+    q: 'Core kya hai?',
+    opts: ['CPU ka doosra naam', 'CPU ke andar individual processing unit', 'Memory ka part', 'Ek program'],
+    ans: 1,
+    ex: 'Core = <b>individual processing unit</b> CPU ke andar. Sari processing core mein hoti hai.'
+  },
+  {
+    q: '"Quad-core processor" ka matlab?',
+    opts: ['4 GHz speed', '4 cores — 4 kaam ek saath', '4 GB memory', '4 threads hamesha'],
+    ans: 1,
+    ex: 'Quad = 4. 4 cores = browser + music + doc + background — sab ek saath.'
+  },
+  {
+    q: 'Process kya hai?',
+    opts: ['Set of instructions', 'Running instance of a program', 'CPU ka part', 'Smallest unit of execution'],
+    ans: 1,
+    ex: 'Program = instructions (kagaz pe). Process = wo program <b>actually chalte hue</b>. OS process start karta hai.'
+  },
+  {
+    q: 'Thread kya hai?',
+    opts: ['Ek chhota program', 'Process ka smallest unit of execution', 'Core ka part', 'OS ka scheduler'],
+    ans: 1,
+    ex: 'Thread = <b>smallest unit of execution within a process</b>. Threads resources share karte hain par independently chalte hain.'
+  },
+  {
+    q: 'MS Word mein spell-checker aur auto-save ka kya role hai?',
+    opts: ['Alag processes', 'Word process ke andar threads', 'OS ke features', 'Alag programs'],
+    ans: 1,
+    ex: 'Word ek process hai — typing, spell-check, auto-save uske <b>andar ke threads</b> hain, ek saath chalte hain.'
+  },
+  {
+    q: 'Multitasking kya hai?',
+    opts: ['Ek process ke threads chalana', 'Multiple processes simultaneously chalana (OS ability)', 'Ek core multiple ban jana', 'CPU fast karna'],
+    ans: 1,
+    ex: 'Multitasking = OS multiple <b>processes</b> simultaneously chalata hai — higher level.'
+  },
+  {
+    q: 'Multithreading multitasking se kaise alag hai?',
+    opts: ['Koi farak nahi', 'Multitasking process level pe, multithreading ek process ke andar thread level pe', 'Multithreading sirf OS mein hoti hai', 'Multitasking sirf single core pe'],
+    ans: 1,
+    ex: 'Multitasking = processes (alag programs). Multithreading = <b>ek hi process ke andar</b> multiple threads — more granular.'
+  },
+  {
+    q: 'Time slicing kya karti hai?',
+    opts: ['Memory ko slice karti hai', 'CPU time ko chhote intervals mein divide karti hai', 'Program ko tod-ti hai', 'Cores ko band karti hai'],
+    ans: 1,
+    ex: 'CPU time → <b>time slices (quantas)</b> — OS scheduler unhe processes/threads ko deta hai, priority ke hisaab se.'
+  },
+  {
+    q: 'Context switching kab hota hai?',
+    opts: ['Program start hote hi', 'Time slice expire hone pe — current ki state save, next ki load', 'Sirf error pe', 'CPU band hote waqt'],
+    ans: 1,
+    ex: 'Time slice khatam → <b>current state save + next state load</b>. Resume wahi se hota hai jahan ruka tha.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Foundation ekdum solid — aage sab easy lagega.';
+    else if (score >= 7) msg = 'Badhiya! Ek-do definitions dobara dekh lo.';
+    else msg = 'Basics important hain — notes + flashcards dobara dekho!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

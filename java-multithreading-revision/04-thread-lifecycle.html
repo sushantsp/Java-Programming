@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Thread Lifecycle — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+    --st-new: #a78bfa; --st-runnable: #60a5fa; --st-running: #34d399;
+    --st-waiting: #fbbf24; --st-terminated: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(11,15,23,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 2px 9px; }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline { background: #0d1424; border: 1px solid var(--border); padding: 1px 7px; border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle; }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+  .run-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 7px; padding: 4px 14px; font-size: 11.5px; font-weight: 700; }
+
+  .console { background: #050810; border-top: 1px solid var(--border); padding: 12px 16px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; display: none; }
+  .console .cline { opacity: 0; transform: translateY(4px); transition: all .25s; color: #a7f3d0; }
+  .console .cline.sys { color: var(--muted); }
+  .console .cline.show { opacity: 1; transform: none; }
+  .console-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+
+  /* ---------- Lifecycle Visual ---------- */
+  .lc-wrap { margin: 16px 0 8px; }
+  .lc-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+  .lc-state { flex: 1; min-width: 130px; text-align: center; border-radius: 12px; padding: 12px 10px; border: 2px solid; position: relative; }
+  .lc-state .sn { font-size: 15px; font-weight: 800; letter-spacing: .5px; }
+  .lc-state .sd { font-size: 11px; margin-top: 3px; opacity: .85; }
+  .lc-new { border-color: var(--st-new); color: var(--st-new); background: rgba(167,139,250,.08); }
+  .lc-runnable { border-color: var(--st-runnable); color: var(--st-runnable); background: rgba(96,165,250,.08); }
+  .lc-running { border-color: var(--st-running); color: var(--st-running); background: rgba(52,211,153,.08); }
+  .lc-waiting { border-color: var(--st-waiting); color: var(--st-waiting); background: rgba(251,191,36,.08); }
+  .lc-term { border-color: var(--st-terminated); color: var(--st-terminated); background: rgba(248,113,113,.08); }
+  .lc-arrow { font-size: 20px; color: var(--muted); font-weight: 700; }
+  .lc-note { font-size: 12.5px; color: var(--muted); margin-top: 6px; font-style: italic; }
+  .lc-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 8px; padding: 8px 20px; font-size: 13px; font-weight: 700; margin-top: 8px; }
+  .lc-btn.reset { background: var(--card2); border: 1px solid var(--border); color: var(--muted); }
+  .lc-highlight { box-shadow: 0 0 18px currentColor; transform: scale(1.04); }
+  .lc-active-label { font-size: 13px; font-weight: 700; margin-top: 14px; min-height: 20px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); white-space: nowrap; }
+  .pill { display: inline-block; font-size: 11px; font-weight: 800; padding: 2px 10px; border-radius: 99px; border: 1px solid; }
+  .p-new { color: var(--st-new); border-color: var(--st-new); background: rgba(167,139,250,.1); }
+  .p-runnable { color: var(--st-runnable); border-color: var(--st-runnable); background: rgba(96,165,250,.1); }
+  .p-waiting { color: var(--st-waiting); border-color: var(--st-waiting); background: rgba(251,191,36,.1); }
+  .p-term { color: var(--st-terminated); border-color: var(--st-terminated); background: rgba(248,113,113,.1); }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card { position: relative; width: 100%; min-height: 220px; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1); }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 34px; text-align: center; }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 11px 15px; margin-bottom: 8px; font-size: 14px; font-family: inherit; transition: all .15s; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl { display: none; margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  .expl.show { display: block; }
+  .quiz-score { display: none; text-align: center; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px; }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .predict-opts { display: flex; flex-direction: column; gap: 8px; }
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+    .lc-row { flex-direction: column; }
+    .lc-arrow { transform: rotate(90deg); }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Thread Lifecycle</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 4 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Thread Lifecycle <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Thread create hoga, chalega, phir terminate hoga — in states ko milakar lifecycle bolte hain.</p>
+
+    <div class="card">
+      <p>Video ka analogy: <span class="hl-p">Insaan ka lifecycle</span> — janm hua, 100 saal jiya, phir pata nahi kya hua. Thread ka bhi same:</p>
+      <ul class="clean">
+        <li>Thread ka <span class="hl">execution ke dauraan multiple states</span> aati hain</li>
+        <li>Unhi states ko padhna hai — <b>ye hi hai lifecycle</b></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color: rgba(108,140,255,.35);">
+      <h3>Interactive Lifecycle — step-by-step chalao</h3>
+      <div class="lc-wrap">
+        <div class="lc-row">
+          <div class="lc-state lc-new" id="lc-new"><div class="sn">NEW</div><div class="sd">object bana, start() nahi</div></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-state lc-runnable" id="lc-runnable"><div class="sn">RUNNABLE</div><div class="sd">start() hua, CPU ka wait</div></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-state lc-running" id="lc-running"><div class="sn">RUNNING</div><div class="sd">CPU mila, run() chal raha</div></div>
+        </div>
+        <div class="lc-row">
+          <div class="lc-state lc-waiting" id="lc-waiting"><div class="sn">BLOCKED / WAITING / TIMED_WAITING</div><div class="sd">sleep(), ya kisi aur thread/lock ka wait</div></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-state lc-term" id="lc-term"><div class="sn">TERMINATED</div><div class="sd">run() khatam ho gaya</div></div>
+        </div>
+      </div>
+      <div class="lc-active-label" id="lc-label">​</div>
+      <button class="lc-btn" id="lc-next" onclick="lcNext()">Next step →</button>
+      <button class="lc-btn reset" onclick="lcReset()">Reset</button>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>5 States (Theory) <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Slides mein ye 5 states batayi gayi thi.</p>
+
+    <div class="card">
+      <table>
+        <tr><th>State</th><th>Kab hoti hai</th></tr>
+        <tr><td><span class="pill p-new">NEW</span></td><td>Thread ka object create hua hai (jaise <code class="inline">new MyThread()</code>) — <b>start() abhi call nahi hua</b></td></tr>
+        <tr><td><span class="pill p-runnable">RUNNABLE</span></td><td><code class="inline">t1.start()</code> hote hi — thread <b>ready to run</b> hai, <b>CPU time ka wait</b> kar raha hai. Chala nahi hai abhi!</td></tr>
+        <tr><td><span class="pill" style="color:var(--st-running);border-color:var(--st-running);background:rgba(52,211,153,.1);">RUNNING</span></td><td>CPU time mil gaya — thread ab <b>actually execute ho raha hai</b> (run() chal raha hai)</td></tr>
+        <tr><td><span class="pill p-waiting">BLOCKED / WAITING</span></td><td>Thread kisi cheez ka wait kar raha hai — kisi resource ka access, ya <b>kisi doosre thread ke complete hone ka</b> wait</td></tr>
+        <tr><td><span class="pill p-term">TERMINATED</span></td><td>Thread <b>finish ho gaya</b> — run() ka execution complete</td></tr>
+      </table>
+      <p class="hinglish">Note: Runnable state wala <code class="inline">Runnable</code> interface wala Runnable nahi hai — wo to interface hai. Ye English wala "runnable" hai = able to run.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The Twist: Java Enum mein RUNNING nahi hai! <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">getState() internally ek enum return karta hai — aur usme RUNNING naam ki koi value hai hi nahi.</p>
+
+    <div class="card">
+      <ul class="clean">
+        <li><code class="inline">Thread.State</code> ek <span class="hl">enum</span> hai — states ki fixed values</li>
+        <li>Java enum mein ye values hain: <span class="hl">NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED</span></li>
+        <li><span class="hl" style="color:var(--bad)">RUNNING exist hi nahi karta!</span></li>
+        <li>Kyunki Java mein <span class="hl">RUNNABLE ka matlab hai</span>: "ya to thread ready-to-run hai, ya actually chal raha hai"</li>
+        <li>Isliye main thread ki state bhi <code class="inline">getState()</code> se <b>RUNNABLE</b> aati hai — halanki wo chal hi raha hai</li>
+      </ul>
+      <p class="hinglish">Slides wali RUNNING state sirf samajhne ke liye thi — Java internally usko RUNNABLE mein hi count karta hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Live Demo: getState() se har state dekho <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Video mein MyThread class banake har state print ki thi. Ye raha poora code + timeline.</p>
+
+    <div class="card">
+      <h3>Code</h3>
+      <div class="code">
+        <div class="code-head"><span>MyThread.java</span><button class="run-btn" onclick="runLifecycle(this)">▶ Run</button></div>
+        <pre><span class="kw">class</span> <span class="ty">MyThread</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        System.out.println(<span class="st">"RUNNING"</span>);          <span class="cm">// manually print kiya</span>
+        <span class="kw">try</span> {
+            Thread.sleep(2000);                  <span class="cm">// t1 2 sec ke liye sleep</span>
+        } <span class="kw">catch</span> (InterruptedException e) {
+            System.out.println(e);
+        }
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>();
+        System.out.println(t1.getState());      <span class="cm">// NEW</span>
+
+        t1.start();                              <span class="cm">// ab RUNNABLE</span>
+        System.out.println(t1.getState());      <span class="cm">// RUNNABLE</span>
+
+        Thread.sleep(100);                       <span class="cm">// main pause — t1 ko chalne ka mauka</span>
+        System.out.println(t1.getState());      <span class="cm">// TIMED_WAITING (sleep mein hai)</span>
+
+        t1.join();                               <span class="cm">// main t1 ke khatam hone ka wait karega</span>
+        System.out.println(t1.getState());      <span class="cm">// TERMINATED</span>
+    }
+}</pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">NEW</div>
+          <div class="cline">RUNNABLE</div>
+          <div class="cline">RUNNING</div>
+          <div class="cline">TIMED_WAITING</div>
+          <div class="cline sys">(2 sec baad...)</div>
+          <div class="cline">TERMINATED</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Output ki timeline</h3>
+      <table>
+        <tr><th>Print</th><th>Kyun</th></tr>
+        <tr><td><span class="pill p-new">NEW</span></td><td>Object bana tha, start() nahi hua tha</td></tr>
+        <tr><td><span class="pill p-runnable">RUNNABLE</span></td><td>start() ho chuka — CPU ka wait</td></tr>
+        <tr><td>RUNNING</td><td>Ye run() ne khud print kiya (getState() se nahi milta!)</td></tr>
+        <tr><td><span class="pill p-waiting">TIMED_WAITING</span></td><td>t1 sleep(2000) mein tha jab main ne state check ki</td></tr>
+        <tr><td><span class="pill p-term">TERMINATED</span></td><td>join() ke baad — t1 poora khatam ho chuka tha</td></tr>
+      </table>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>sleep() aur join() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Thread.sleep(ms)</h3>
+      <ul class="clean">
+        <li>Jis thread ka code chal raha hai, usko <span class="hl">utne milliseconds ke liye pause</span> kar deta hai</li>
+        <li>Ye <span class="hl-p">checked exception</span> throw karta hai — <code class="inline">InterruptedException</code> — try-catch ya throws lagana <b>compulsory</b></li>
+        <li><code class="inline">Thread.sleep(100)</code> main mein = <b>main thread</b> pause hua (kyunki wo main chala raha tha)</li>
+        <li>run() ke andar <code class="inline">throws</code> <b>nahi likh sakte</b> — kyunki parent Thread class ka run() throws nahi karta; overridden method checked exceptions <span class="hl">add nahi kar sakta</span> — isliye wahan try-catch lagana padta hai</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>t1.join()</h3>
+      <ul class="clean">
+        <li>Matlab: <span class="hl">"jis thread ka code chal raha hai, wo t1 ke finish hone ka wait karega"</span></li>
+        <li>main() mein <code class="inline">t1.join()</code> = main thread wait karega jab tak t1 khatam nahi hota</li>
+        <li>Join ke baad hi next statement chalta hai — isliye join ke baad getState() hamesha <b>TERMINATED</b> deta hai</li>
+        <li>Video mein output thoda late aaya — kyunki main t1 ka wait kar raha tha (2 sec sleep khatam hone tak)</li>
+      </ul>
+      <p class="hinglish">Simple words mein: join() = "t1, kab tak aoge? Main yahin rukta hun."</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Predict the Output <span class="badge bonus">BONUS</span></h2></div>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; System.out.println(<span class="st">"hi"</span>));
+System.out.println(t1.getState());   <span class="cm">// line 1</span>
+t1.start();
+System.out.println(t1.getState());   <span class="cm">// line 2</span></pre>
+      </div>
+      <div class="predict-opts" id="predict1">
+        <button class="opt" onclick="checkPredict(this,'predict1','A')">A) NEW, phir RUNNABLE</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','B')">B) RUNNABLE, phir RUNNING</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','C')">C) NEW, phir RUNNING</button>
+      </div>
+      <div class="expl" id="predict1-expl"><b>Answer: A</b> — start() se pehle NEW, start() ke baad RUNNABLE. RUNNING kabhi nahi milega — Java enum mein RUNNING hai hi nahi! RUNNABLE ka matlab "ready OR running".</div>
+    </div>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; { <span class="kw">try</span> { Thread.sleep(5000); } <span class="kw">catch</span> (Exception e) {} });
+t1.start();
+Thread.sleep(1000);
+System.out.println(t1.getState());   <span class="cm">// kya print hoga?</span></pre>
+      </div>
+      <div class="predict-opts" id="predict2">
+        <button class="opt" onclick="checkPredict(this,'predict2','A')">A) RUNNABLE</button>
+        <button class="opt" onclick="checkPredict(this,'predict2','B')">B) WAITING</button>
+        <button class="opt" onclick="checkPredict(this,'predict2','C')">C) TIMED_WAITING</button>
+      </div>
+      <div class="expl" id="predict2-expl"><b>Answer: C</b> — t1 abhi 5-second ke sleep mein hai. <b>Time ke saath</b> wait karna = TIMED_WAITING. (Bina time ke indefinite wait = WAITING)</div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/10</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <section id="s8" data-checkpoint="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">8 questions — video + bonus content se. Instant feedback milega.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s8">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Java Thread Lifecycle EXPLAINED!") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+<script>
+/* ================= PROGRESS ================= */
+const KEY = 'mt-revision-v4';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= LIFECYCLE VISUAL ================= */
+const LC_STEPS = [
+  { id: 'lc-new',        label: 'NEW — new MyThread() se object bana. Abhi start() nahi hua, thread kuch nahi kar raha.' },
+  { id: 'lc-runnable',   label: 'RUNNABLE — t1.start() call hua. Thread ready hai, CPU time ka wait kar raha hai. Chala nahi abhi!' },
+  { id: 'lc-running',    label: 'RUNNING — CPU mil gaya, run() ab actually execute ho raha hai. (Java enum mein ye RUNNABLE hi hota hai)' },
+  { id: 'lc-waiting',    label: 'TIMED_WAITING — run() ke andar Thread.sleep(2000) chala. Thread 2 sec ke liye pause. sleep = TIMED_WAITING.' },
+  { id: 'lc-term',       label: 'TERMINATED — run() poora khatam. Thread ki zindagi over. Ab getState() hamesha TERMINATED dega.' }
+];
+let lcStep = -1;
+
+function lcNext() {
+  document.querySelectorAll('.lc-state').forEach(el => el.classList.remove('lc-highlight'));
+  lcStep++;
+  if (lcStep >= LC_STEPS.length) lcStep = 0;
+  const step = LC_STEPS[lcStep];
+  document.getElementById(step.id).classList.add('lc-highlight');
+  document.getElementById('lc-label').textContent = step.label;
+  const btn = document.getElementById('lc-next');
+  btn.textContent = lcStep === LC_STEPS.length - 1 ? '↻ Start again' : 'Next step →';
+}
+function lcReset() {
+  lcStep = -1;
+  document.querySelectorAll('.lc-state').forEach(el => el.classList.remove('lc-highlight'));
+  document.getElementById('lc-label').textContent = '\u200b';
+  document.getElementById('lc-next').textContent = 'Next step →';
+}
+
+/* ================= DEMO RUN ================= */
+function runLifecycle(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  const delays = [300, 800, 1600, 2600, 5600, 6200];
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), delays[i]));
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= PREDICT ================= */
+const PREDICT_ANSWERS = { predict1: 'A', predict2: 'C' };
+function checkPredict(btn, parentId, chosen) {
+  const parent = document.getElementById(parentId);
+  const correct = PREDICT_ANSWERS[parentId];
+  parent.querySelectorAll('.opt').forEach(o => o.disabled = true);
+  if (chosen === correct) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.opt').forEach(o => {
+      if (o.getAttribute('onclick').includes("'" + correct + "'")) o.classList.add('correct');
+    });
+  }
+  document.getElementById(parentId + '-expl').classList.add('show');
+}
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'Thread lifecycle kya hai?', a: 'Thread ke execution ke dauraan aane wali <b>states ka sequence</b> — create → run → terminate' },
+  { q: 'NEW state kab hoti hai?', a: 'Jab thread ka <b>object bana</b> ho par <b>start() call nahi</b> hua ho' },
+  { q: 'RUNNABLE state kab hoti hai?', a: '<b>start()</b> hote hi — thread <b>ready to run</b> hai, CPU time ka wait kar raha hai' },
+  { q: 'RUNNING state kab hoti hai?', a: 'Jab CPU time mil jaye aur thread <b>actually execute</b> ho raha ho' },
+  { q: 'BLOCKED / WAITING state kab hoti hai?', a: 'Thread kisi <b>resource/lock ka wait</b> kar raha ho, ya <b>kisi doosre thread ke complete hone ka</b> wait kar raha ho' },
+  { q: 'TERMINATED state kab hoti hai?', a: 'run() ka execution <b>poora khatam</b> ho gaya ho' },
+  { q: 'Java ke Thread.State enum mein kaunsi values hain?', a: 'NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED — <b>RUNNING nahi hai!</b>' },
+  { q: 'RUNNING enum mein kyun nahi hai?', a: 'Java mein <b>RUNNABLE ka matlab</b> hi hai "ready to run OR actually running" — dono ko milakar ek hi state' },
+  { q: 'Thread.sleep(2000) kya karta hai?', a: 'Jis thread ka code chal raha hai usko <b>2 sec ke liye pause</b> karta hai — state ban jati hai <b>TIMED_WAITING</b>' },
+  { q: 't1.join() kya karta hai?', a: 'Current thread <b>t1 ke finish hone ka wait</b> karta hai — main() mein call kiya to main ruk jayega jab tak t1 khatam nahi hota' },
+  { q: 'sleep() ki InterruptedException ka kya scene hai?', a: 'Ye <b>checked exception</b> hai — <b>try-catch ya throws compulsory</b>. run() override karte waqt throws nahi likh sakte (parent run() throws nahi karta)' }
+];
+let fcIdx = 0;
+
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'Thread NEW state mein kab hota hai?',
+    opts: ['start() call karne ke baad', 'Object create hote hi, start() se pehle', 'run() khatam hone ke baad', 'sleep() ke dauraan'],
+    ans: 1,
+    ex: 'Object bana = NEW. start() call karte hi RUNNABLE.'
+  },
+  {
+    q: 'start() call karne ke turant baad thread ki state kya hai?',
+    opts: ['RUNNING', 'RUNNABLE', 'NEW', 'TERMINATED'],
+    ans: 1,
+    ex: 'start() ke baad thread <b>ready to run</b> — RUNNABLE. CPU milne par chalta hai.'
+  },
+  {
+    q: 'Java ke Thread.State enum mein kaunsi value MISSING hai?',
+    opts: ['NEW', 'RUNNABLE', 'RUNNING', 'TERMINATED'],
+    ans: 2,
+    ex: '<b>RUNNING nahi hai!</b> RUNNABLE ka matlab hi "ready OR running" hai.'
+  },
+  {
+    q: 'Thread.sleep() ke dauraan thread ki state kya hoti hai?',
+    opts: ['RUNNABLE', 'WAITING', 'TIMED_WAITING', 'BLOCKED'],
+    ans: 2,
+    ex: 'Time ke saath sleep = <b>TIMED_WAITING</b>. Indefinite wait hota to WAITING.'
+  },
+  {
+    q: 'main() mein t1.join() call karne se kya hota hai?',
+    opts: ['t1 main thread ka wait karta hai', 'main thread t1 ke finish hone ka wait karta hai', 't1 foran terminate ho jata hai', 'kuch nahi hota'],
+    ans: 1,
+    ex: 'join() = caller waits. main() mein call kiya to <b>main t1 ka wait</b> karega, phir hi aage badhega.'
+  },
+  {
+    q: 'Thread.sleep() kya throw karta hai?',
+    opts: ['IOException', 'InterruptedException (checked)', 'NullPointerException', 'kuch nahi'],
+    ans: 1,
+    ex: '<b>InterruptedException</b> — checked exception, isliye try-catch ya throws zaroori.'
+  },
+  {
+    q: 'run() override karte waqt throws InterruptedException likh sakte hain?',
+    opts: ['Haan, hamesha', 'Nahi — parent Thread ka run() throws nahi karta', 'Sirf Runnable ke saath', 'Sirf static methods mein'],
+    ans: 1,
+    ex: 'Overridden method <b> nayi checked exception add nahi kar sakta</b> — isliye run() ke andar try-catch hi lagana padta hai.'
+  },
+  {
+    q: 'join() ke baad t1.getState() kya dega (agar t1 khatam ho chuka hai)?',
+    opts: ['RUNNABLE', 'TIMED_WAITING', 'TERMINATED', 'NEW'],
+    ans: 2,
+    ex: 'join() ke baad t1 completely finish ho chuka hota hai — <b>TERMINATED</b>.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Lifecycle ekdum clear hai.';
+    else if (score >= 6) msg = 'Badhiya! Thode se points dobara revise kar lo.';
+    else msg = 'Theek hai — notes + flashcards dobara dekho, phir try karo!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

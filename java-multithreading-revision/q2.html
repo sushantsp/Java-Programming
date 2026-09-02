@@ -1,0 +1,248 @@
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Thread Lifecycle</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 4 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Thread Lifecycle <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Thread create hoga, chalega, phir terminate hoga — in states ko milakar lifecycle bolte hain.</p>
+
+    <div class="card">
+      <p>Video ka analogy: <span class="hl-p">Insaan ka lifecycle</span> — janm hua, 100 saal jiya, phir pata nahi kya hua. Thread ka bhi same:</p>
+      <ul class="clean">
+        <li>Thread ka <span class="hl">execution ke dauraan multiple states</span> aati hain</li>
+        <li>Unhi states ko padhna hai — <b>ye hi hai lifecycle</b></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color: rgba(108,140,255,.35);">
+      <h3>Interactive Lifecycle — step-by-step chalao</h3>
+      <div class="lc-wrap">
+        <div class="lc-row">
+          <div class="lc-state lc-new" id="lc-new"><div class="sn">NEW</div><div class="sd">object bana, start() nahi</div></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-state lc-runnable" id="lc-runnable"><div class="sn">RUNNABLE</div><div class="sd">start() hua, CPU ka wait</div></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-state lc-running" id="lc-running"><div class="sn">RUNNING</div><div class="sd">CPU mila, run() chal raha</div></div>
+        </div>
+        <div class="lc-row">
+          <div class="lc-state lc-waiting" id="lc-waiting"><div class="sn">BLOCKED / WAITING / TIMED_WAITING</div><div class="sd">sleep(), ya kisi aur thread/lock ka wait</div></div>
+          <div class="lc-arrow">→</div>
+          <div class="lc-state lc-term" id="lc-term"><div class="sn">TERMINATED</div><div class="sd">run() khatam ho gaya</div></div>
+        </div>
+      </div>
+      <div class="lc-active-label" id="lc-label">​</div>
+      <button class="lc-btn" id="lc-next" onclick="lcNext()">Next step →</button>
+      <button class="lc-btn reset" onclick="lcReset()">Reset</button>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>5 States (Theory) <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Slides mein ye 5 states batayi gayi thi.</p>
+
+    <div class="card">
+      <table>
+        <tr><th>State</th><th>Kab hoti hai</th></tr>
+        <tr><td><span class="pill p-new">NEW</span></td><td>Thread ka object create hua hai (jaise <code class="inline">new MyThread()</code>) — <b>start() abhi call nahi hua</b></td></tr>
+        <tr><td><span class="pill p-runnable">RUNNABLE</span></td><td><code class="inline">t1.start()</code> hote hi — thread <b>ready to run</b> hai, <b>CPU time ka wait</b> kar raha hai. Chala nahi hai abhi!</td></tr>
+        <tr><td><span class="pill" style="color:var(--st-running);border-color:var(--st-running);background:rgba(52,211,153,.1);">RUNNING</span></td><td>CPU time mil gaya — thread ab <b>actually execute ho raha hai</b> (run() chal raha hai)</td></tr>
+        <tr><td><span class="pill p-waiting">BLOCKED / WAITING</span></td><td>Thread kisi cheez ka wait kar raha hai — kisi resource ka access, ya <b>kisi doosre thread ke complete hone ka</b> wait</td></tr>
+        <tr><td><span class="pill p-term">TERMINATED</span></td><td>Thread <b>finish ho gaya</b> — run() ka execution complete</td></tr>
+      </table>
+      <p class="hinglish">Note: Runnable state wala <code class="inline">Runnable</code> interface wala Runnable nahi hai — wo to interface hai. Ye English wala "runnable" hai = able to run.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The Twist: Java Enum mein RUNNING nahi hai! <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">getState() internally ek enum return karta hai — aur usme RUNNING naam ki koi value hai hi nahi.</p>
+
+    <div class="card">
+      <ul class="clean">
+        <li><code class="inline">Thread.State</code> ek <span class="hl">enum</span> hai — states ki fixed values</li>
+        <li>Java enum mein ye values hain: <span class="hl">NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED</span></li>
+        <li><span class="hl" style="color:var(--bad)">RUNNING exist hi nahi karta!</span></li>
+        <li>Kyunki Java mein <span class="hl">RUNNABLE ka matlab hai</span>: "ya to thread ready-to-run hai, ya actually chal raha hai"</li>
+        <li>Isliye main thread ki state bhi <code class="inline">getState()</code> se <b>RUNNABLE</b> aati hai — halanki wo chal hi raha hai</li>
+      </ul>
+      <p class="hinglish">Slides wali RUNNING state sirf samajhne ke liye thi — Java internally usko RUNNABLE mein hi count karta hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Live Demo: getState() se har state dekho <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Video mein MyThread class banake har state print ki thi. Ye raha poora code + timeline.</p>
+
+    <div class="card">
+      <h3>Code</h3>
+      <div class="code">
+        <div class="code-head"><span>MyThread.java</span><button class="run-btn" onclick="runLifecycle(this)">▶ Run</button></div>
+        <pre><span class="kw">class</span> <span class="ty">MyThread</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        System.out.println(<span class="st">"RUNNING"</span>);          <span class="cm">// manually print kiya</span>
+        <span class="kw">try</span> {
+            Thread.sleep(2000);                  <span class="cm">// t1 2 sec ke liye sleep</span>
+        } <span class="kw">catch</span> (InterruptedException e) {
+            System.out.println(e);
+        }
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>();
+        System.out.println(t1.getState());      <span class="cm">// NEW</span>
+
+        t1.start();                              <span class="cm">// ab RUNNABLE</span>
+        System.out.println(t1.getState());      <span class="cm">// RUNNABLE</span>
+
+        Thread.sleep(100);                       <span class="cm">// main pause — t1 ko chalne ka mauka</span>
+        System.out.println(t1.getState());      <span class="cm">// TIMED_WAITING (sleep mein hai)</span>
+
+        t1.join();                               <span class="cm">// main t1 ke khatam hone ka wait karega</span>
+        System.out.println(t1.getState());      <span class="cm">// TERMINATED</span>
+    }
+}</pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">NEW</div>
+          <div class="cline">RUNNABLE</div>
+          <div class="cline">RUNNING</div>
+          <div class="cline">TIMED_WAITING</div>
+          <div class="cline sys">(2 sec baad...)</div>
+          <div class="cline">TERMINATED</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Output ki timeline</h3>
+      <table>
+        <tr><th>Print</th><th>Kyun</th></tr>
+        <tr><td><span class="pill p-new">NEW</span></td><td>Object bana tha, start() nahi hua tha</td></tr>
+        <tr><td><span class="pill p-runnable">RUNNABLE</span></td><td>start() ho chuka — CPU ka wait</td></tr>
+        <tr><td>RUNNING</td><td>Ye run() ne khud print kiya (getState() se nahi milta!)</td></tr>
+        <tr><td><span class="pill p-waiting">TIMED_WAITING</span></td><td>t1 sleep(2000) mein tha jab main ne state check ki</td></tr>
+        <tr><td><span class="pill p-term">TERMINATED</span></td><td>join() ke baad — t1 poora khatam ho chuka tha</td></tr>
+      </table>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>sleep() aur join() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Thread.sleep(ms)</h3>
+      <ul class="clean">
+        <li>Jis thread ka code chal raha hai, usko <span class="hl">utne milliseconds ke liye pause</span> kar deta hai</li>
+        <li>Ye <span class="hl-p">checked exception</span> throw karta hai — <code class="inline">InterruptedException</code> — try-catch ya throws lagana <b>compulsory</b></li>
+        <li><code class="inline">Thread.sleep(100)</code> main mein = <b>main thread</b> pause hua (kyunki wo main chala raha tha)</li>
+        <li>run() ke andar <code class="inline">throws</code> <b>nahi likh sakte</b> — kyunki parent Thread class ka run() throws nahi karta; overridden method checked exceptions <span class="hl">add nahi kar sakta</span> — isliye wahan try-catch lagana padta hai</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>t1.join()</h3>
+      <ul class="clean">
+        <li>Matlab: <span class="hl">"jis thread ka code chal raha hai, wo t1 ke finish hone ka wait karega"</span></li>
+        <li>main() mein <code class="inline">t1.join()</code> = main thread wait karega jab tak t1 khatam nahi hota</li>
+        <li>Join ke baad hi next statement chalta hai — isliye join ke baad getState() hamesha <b>TERMINATED</b> deta hai</li>
+        <li>Video mein output thoda late aaya — kyunki main t1 ka wait kar raha tha (2 sec sleep khatam hone tak)</li>
+      </ul>
+      <p class="hinglish">Simple words mein: join() = "t1, kab tak aoge? Main yahin rukta hun."</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Predict the Output <span class="badge bonus">BONUS</span></h2></div>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; System.out.println(<span class="st">"hi"</span>));
+System.out.println(t1.getState());   <span class="cm">// line 1</span>
+t1.start();
+System.out.println(t1.getState());   <span class="cm">// line 2</span></pre>
+      </div>
+      <div class="predict-opts" id="predict1">
+        <button class="opt" onclick="checkPredict(this,'predict1','A')">A) NEW, phir RUNNABLE</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','B')">B) RUNNABLE, phir RUNNING</button>
+        <button class="opt" onclick="checkPredict(this,'predict1','C')">C) NEW, phir RUNNING</button>
+      </div>
+      <div class="expl" id="predict1-expl"><b>Answer: A</b> — start() se pehle NEW, start() ke baad RUNNABLE. RUNNING kabhi nahi milega — Java enum mein RUNNING hai hi nahi! RUNNABLE ka matlab "ready OR running".</div>
+    </div>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; { <span class="kw">try</span> { Thread.sleep(5000); } <span class="kw">catch</span> (Exception e) {} });
+t1.start();
+Thread.sleep(1000);
+System.out.println(t1.getState());   <span class="cm">// kya print hoga?</span></pre>
+      </div>
+      <div class="predict-opts" id="predict2">
+        <button class="opt" onclick="checkPredict(this,'predict2','A')">A) RUNNABLE</button>
+        <button class="opt" onclick="checkPredict(this,'predict2','B')">B) WAITING</button>
+        <button class="opt" onclick="checkPredict(this,'predict2','C')">C) TIMED_WAITING</button>
+      </div>
+      <div class="expl" id="predict2-expl"><b>Answer: C</b> — t1 abhi 5-second ke sleep mein hai. <b>Time ke saath</b> wait karna = TIMED_WAITING. (Bina time ke indefinite wait = WAITING)</div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/10</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <section id="s8" data-checkpoint="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">8 questions — video + bonus content se. Instant feedback milega.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s8">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Java Thread Lifecycle EXPLAINED!") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>

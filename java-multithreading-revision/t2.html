@@ -1,0 +1,216 @@
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>The Lock Interface &amp; ReentrantLock <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Manual locking with full control — the method set.</p>
+
+    <div class="card">
+      <h3>Creating a Lock</h3>
+      <div class="code">
+        <div class="code-head"><span>BankAccount.java</span></div>
+        <pre><span class="kw">private final</span> <span class="ty">Lock</span> lock = <span class="kw">new</span> <span class="ty">ReentrantLock</span>();</pre>
+      </div>
+      <ul class="clean">
+        <li><code class="inline">Lock</code> is an <span class="hl">interface</span> — you can't instantiate it directly</li>
+        <li><code class="inline">ReentrantLock</code> is the <span class="hl">implementation class</span> (why it's called "reentrant" — section 05)</li>
+        <li>Every Java object already has an intrinsic lock (used by synchronized) — here <b>we create our own lock object</b></li>
+        <li>Whichever thread <span class="hl">acquires this lock</span> gets access to the critical section</li>
+      </ul>
+      <p class="hinglish">Key-and-lock mental model: lock() = taking the key. Whoever holds the key enters; others must wait or leave.</p>
+    </div>
+
+    <div class="card">
+      <h3>The four core methods</h3>
+      <table>
+        <tr><th>Method</th><th>Behaviour</th><th>Returns / Throws</th></tr>
+        <tr>
+          <td><code class="inline">lock()</code></td>
+          <td>Acquires the lock — <b>waits indefinitely</b> until available (same behaviour as synchronized — no real advantage)</td>
+          <td>void</td>
+        </tr>
+        <tr>
+          <td><code class="inline">tryLock()</code></td>
+          <td><b>Tries immediately</b> — no waiting at all. If the lock is free → acquire it. If not → walk away</td>
+          <td><span class="hl" style="color:var(--good)">true</span> if acquired, <span class="hl" style="color:var(--bad)">false</span> if busy</td>
+        </tr>
+        <tr>
+          <td><code class="inline">tryLock(1, TimeUnit.SECONDS)</code></td>
+          <td>Waits <b>up to the given time</b> for the lock. Free within 1s → acquire. Timeout → walk away</td>
+          <td>true / false — throws <span class="hl-p">InterruptedException</span> (because it waits)</td>
+        </tr>
+        <tr>
+          <td><code class="inline">unlock()</code></td>
+          <td>Releases the lock — <b>always call in finally</b></td>
+          <td>void</td>
+        </tr>
+        <tr>
+          <td><code class="inline">lockInterruptibly()</code></td>
+          <td>Like lock() (waits indefinitely) — <b>but the waiting thread can be interrupted</b> from outside</td>
+          <td>throws InterruptedException</td>
+        </tr>
+      </table>
+      <p class="hinglish">tryLock = "knock once, if busy leave". tryLock(time) = "I'll wait 1 second, not more". lock() = "main yahin khada rahunga" — no benefit over synchronized.</p>
+    </div>
+
+    <div class="card">
+      <h3>Why tryLock(1, SECONDS) throws InterruptedException</h3>
+      <p>Plain <code class="inline">tryLock()</code> doesn't wait — so nothing can interrupt it. But <code class="inline">tryLock(time)</code> <b>waits</b>, and while waiting, another thread could interrupt it. Any method that waits can be interrupted — so the exception must be handled (try-catch or throws).</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The Fix: Bank Account with tryLock <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Full code</h3>
+      <div class="code">
+        <div class="code-head"><span>BankAccount.java</span><button class="run-btn" onclick="runBank(this)">▶ Run</button></div>
+        <pre><span class="kw">class</span> <span class="ty">BankAccount</span> {
+    <span class="kw">private int</span> balance = 100;
+    <span class="kw">private final</span> <span class="ty">Lock</span> lock = <span class="kw">new</span> <span class="ty">ReentrantLock</span>();
+
+    <span class="kw">public void</span> <span class="mt">withdraw</span>(<span class="kw">int</span> amount) {
+        System.out.println(Thread.currentThread().getName() + <span class="st">" attempting withdrawal "</span> + amount);
+
+        <span class="kw">try</span> {
+            <span class="kw">if</span> (lock.tryLock(1000, TimeUnit.MILLISECONDS)) {   <span class="cm">// wait max 1s</span>
+                <span class="kw">try</span> {
+                    <span class="kw">if</span> (balance &gt;= amount) {
+                        System.out.println(Thread.currentThread().getName() + <span class="st">" proceeding with withdrawal"</span>);
+                        Thread.sleep(3000);                       <span class="cm">// slow transaction</span>
+                        balance -= amount;
+                        System.out.println(Thread.currentThread().getName()
+                            + <span class="st">" completed. Remaining: "</span> + balance);
+                    } <span class="kw">else</span> {
+                        System.out.println(Thread.currentThread().getName() + <span class="st">" insufficient balance"</span>);
+                    }
+                } <span class="kw">finally</span> {
+                    lock.unlock();                                <span class="cm">// ALWAYS in finally!</span>
+                }
+            } <span class="kw">else</span> {
+                System.out.println(Thread.currentThread().getName()
+                    + <span class="st">" could not acquire the lock — will try later"</span>);
+            }
+        } <span class="kw">catch</span> (InterruptedException e) {
+            Thread.currentThread().interrupt();                  <span class="cm">// restore interrupt status</span>
+        }
+    }
+}</pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">Thread-1 attempting withdrawal 50</div>
+          <div class="cline">Thread-2 attempting withdrawal 50</div>
+          <div class="cline">Thread-1 proceeding with withdrawal</div>
+          <div class="cline bad">Thread-2 could not acquire the lock — will try later</div>
+          <div class="cline sys">(after 3s...)</div>
+          <div class="cline good">Thread-1 completed. Remaining: 50</div>
+        </div>
+      </div>
+      <ul class="clean">
+        <li>Thread-1 acquires the lock, starts its 3-second transaction</li>
+        <li>Thread-2 tries for <b>1 second</b> — fails — prints "will try later" and <span class="hl">moves on instead of blocking forever</span></li>
+        <li><code class="inline">unlock()</code> sits in <span class="hl">finally</span> — even if an exception hits, the lock is released (that's what finally is for: releasing resources)</li>
+        <li>Note the structure: <b>outer try-catch</b> for tryLock's InterruptedException, <b>inner try-finally</b> for the work + unlock</li>
+      </ul>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Why "Reentrant"? <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">The outer/inner puzzle from the video — and the counting mechanism that solves it.</p>
+
+    <div class="card">
+      <h3>The puzzle</h3>
+      <div class="code">
+        <div class="code-head"><span>ReentrantExample.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">ReentrantExample</span> {
+    <span class="kw">private final</span> <span class="ty">Lock</span> lock = <span class="kw">new</span> <span class="ty">ReentrantLock</span>();
+
+    <span class="kw">public void</span> <span class="mt">outer</span>() {
+        lock.lock();                 <span class="cm">// main thread acquires (count: 1)</span>
+        System.out.println(<span class="st">"outer method"</span>);
+        inner();                     <span class="cm">// calls inner... which locks AGAIN</span>
+        lock.unlock();               <span class="cm">// (count: 0)</span>
+    }
+
+    <span class="kw">public void</span> <span class="mt">inner</span>() {
+        lock.lock();                 <span class="cm">// same lock, same thread! (count: 2)</span>
+        System.out.println(<span class="st">"inner method"</span>);
+        lock.unlock();               <span class="cm">// (count: 1)</span>
+    }
+}</pre>
+      </div>
+      <ul class="clean">
+        <li>outer() locks → inner() tries to lock the <b>same lock again</b> from the <b>same thread</b></li>
+        <li>With a naive lock this would be a <span class="hl" style="color:var(--bad)">self-deadlock</span>: inner waits for outer to release... but outer can't finish until inner returns. Circular dependency!</li>
+        <li>But ReentrantLock works fine. Why? <span class="hl">A thread can re-enter a lock it already holds</span></li>
+      </ul>
+    </div>
+
+    <div class="card" style="border-color: rgba(108,140,255,.35);">
+      <h3>The counting mechanism — interactive</h3>
+      <p>ReentrantLock maintains an internal <b>hold count</b>. Play it step by step:</p>
+      <div class="count-demo" id="count-demo">
+        <div class="cd-step" id="cd-0"><div class="cd-act">Start</div><div class="cd-count">—</div></div>
+        <div class="cd-arrow">→</div>
+        <div class="cd-step" id="cd-1"><div class="cd-act">outer: lock()</div><div class="cd-count">0</div></div>
+        <div class="cd-arrow">→</div>
+        <div class="cd-step" id="cd-2"><div class="cd-act">inner: lock()</div><div class="cd-count">0</div></div>
+        <div class="cd-arrow">→</div>
+        <div class="cd-step" id="cd-3"><div class="cd-act">inner: unlock()</div><div class="cd-count">0</div></div>
+        <div class="cd-arrow">→</div>
+        <div class="cd-step" id="cd-4"><div class="cd-act">outer: unlock()</div><div class="cd-count">0</div></div>
+      </div>
+      <div id="cd-note" style="min-height:22px;font-size:13.5px;color:var(--warn);margin-top:8px;"></div>
+      <button class="cd-btn" id="cd-btn" onclick="cdNext()">Next step →</button>
+      <button class="cd-btn reset" onclick="cdReset()">Reset</button>
+    </div>
+
+    <div class="card">
+      <h3>The rules that follow</h3>
+      <ul class="clean">
+        <li><b>Every lock() must be paired with an unlock()</b> — the lock fully releases only when the count drops back to <b>zero</b></li>
+        <li>One extra unlock (count goes below zero) → <span class="hl" style="color:var(--bad)">IllegalMonitorStateException</span></li>
+        <li>Don't unlock in inner and continue working in outer — count hits zero early, <b>another thread can sneak in</b> mid-operation (inconsistency!)</li>
+        <li><span class="hl-p">synchronized is ALSO reentrant</span> — reentrancy isn't exclusive to ReentrantLock; it's the extra control that makes Lock worth using</li>
+      </ul>
+      <p class="hinglish">House key analogy: you hold the main key, so you can enter any room — washroom, bedroom, anywhere. Each entry/exit pairs up; only the final exit locks the house.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h3></h3><h2>Critical Practices <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>1. unlock() always in finally</h3>
+      <p>If an exception fires between lock() and unlock(), the lock never releases — every other thread blocks forever. finally guarantees release, exception or not.</p>
+    </div>
+
+    <div class="card">
+      <h3>2. Restore the interrupt status in catch</h3>
+      <div class="code">
+        <div class="code-head"><span>Good practice</span></div>
+        <pre><span class="kw">catch</span> (InterruptedException e) {
+    Thread.currentThread().interrupt();   <span class="cm">// restore the interrupt status</span>
+}</pre>
+      </div>
+      <ul class="clean">
+        <li>Catching InterruptedException and <b>only logging it</b> counts as <span class="hl">ignoring</span> it — the thread's "I was interrupted" status is lost</li>
+        <li>Calling <code class="inline">Thread.currentThread().interrupt()</code> <span class="hl">restores that flag</span>, so monitoring/cleanup code that checks <code class="inline">isInterrupted()</code> still works</li>
+        <li>Risk of an empty catch: delayed shutdown and lost information — the thread was interrupted mid-task and nobody finds out</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>3. Thread states during locking <span class="badge bonus">BONUS RECAP</span></h3>
+      <table>
+        <tr><th>Situation</th><th>State</th></tr>
+        <tr><td>lock() / lockInterruptibly() waiting</td><td><b>BLOCKED / WAITING</b> — waits indefinitely</td></tr>
+        <tr><td>tryLock(time) waiting</td><td>TIMED_WAITING — waits up to the timeout</td></tr>
+        <tr><td>tryLock() busy</td><td>No wait at all — returns false immediately</td></tr>
+      </table>
+      <p class="hinglish">Now the BLOCKED/WAITING states from the lifecycle video finally have a real cause to point at — lock contention.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>

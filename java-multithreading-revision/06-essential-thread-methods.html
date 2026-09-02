@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Essential Thread Methods — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(11,15,23,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num { font-size: 12px; font-weight: 700; color: var(--accent); border: 1px solid var(--border); background: var(--card); border-radius: 8px; padding: 2px 9px; }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline { background: #0d1424; border: 1px solid var(--border); padding: 1px 7px; border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--accent2); }
+  .badge { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px; padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle; }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+  .run-btn { cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6); color: white; border: none; border-radius: 7px; padding: 4px 14px; font-size: 11.5px; font-weight: 700; }
+
+  .console { background: #050810; border-top: 1px solid var(--border); padding: 12px 16px; font-family: ui-monospace, Menlo, monospace; font-size: 13px; display: none; }
+  .console .cline { opacity: 0; transform: translateY(4px); transition: all .25s; color: #a7f3d0; }
+  .console .cline.sys { color: var(--muted); }
+  .console .cline.err { color: var(--bad); }
+  .console .cline.show { opacity: 1; transform: none; }
+  .console-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); }
+
+  .prio-scale { display: flex; gap: 8px; margin: 14px 0; }
+  .prio-box { flex: 1; text-align: center; border-radius: 10px; padding: 10px 8px; border: 2px solid; }
+  .prio-box .pv { font-size: 22px; font-weight: 800; }
+  .prio-box .pn { font-size: 11px; font-weight: 700; letter-spacing: .5px; }
+  .p-min { border-color: #f87171; color: #f87171; background: rgba(248,113,113,.08); }
+  .p-norm { border-color: #fbbf24; color: #fbbf24; background: rgba(251,191,36,.08); }
+  .p-max { border-color: #34d399; color: #34d399; background: rgba(52,211,153,.08); }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card { position: relative; width: 100%; min-height: 220px; cursor: pointer; transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1); }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: var(--radius); border: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 34px; text-align: center; }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt { display: block; width: 100%; text-align: left; cursor: pointer; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 11px 15px; margin-bottom: 8px; font-size: 14px; font-family: inherit; transition: all .15s; }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl { display: none; margin-top: 10px; font-size: 13px; color: var(--muted); background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; }
+  .expl.show { display: block; }
+  .quiz-score { display: none; text-align: center; padding: 24px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px; }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+    .prio-scale { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Essential Thread Methods</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 6 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>start() aur run() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li><code class="inline">t1.start()</code> — JVM ko batata hai "naya thread banao" — aur us thread mein run() execute hota hai</li>
+        <li><code class="inline">run()</code> — <span class="hl">overridden method</span> — jo kaam doosre thread mein karana hai wo yahan likhte hain</li>
+        <li><code class="inline">new Thread()</code> direct banaya toh <span class="hl-p">default run() kuch nahi karta</span> — constructor mein Runnable ya naam dena hota hai</li>
+      </ul>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>sleep() aur join() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Thread.sleep(ms)</h3>
+      <ul class="clean">
+        <li>Jo thread is code ko chala raha hai, usko utne <span class="hl">milliseconds ke liye pause</span> karta hai</li>
+        <li><code class="inline">InterruptedException</code> throw karta hai — <b>try-catch compulsory</b></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>t1.join()</h3>
+      <ul class="clean">
+        <li>Jis thread ne call kiya (caller), wo <span class="hl">t1 ke khatam hone ka wait</span> karega</li>
+        <li>Video ka demo: run() mein 5 sec ka sleep tha, main mein join() — <b>Hello 5 second baad print hua</b>, kyunki main ruka tha t1 ke liye</li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runJoin(this)">▶ Run</button></div>
+        <pre><span class="cm">// run() mein: Thread.sleep(5000)</span>
+<span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+    <span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>();
+    t1.start();
+    t1.join();                          <span class="cm">// main ruk gaya t1 ke liye</span>
+    System.out.println(<span class="st">"Hello"</span>);   <span class="cm">// ye 5 sec BAAD print hoga</span>
+}</pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline sys">(5 second wait...)</div>
+          <div class="cline">Hello</div>
+        </div>
+      </div>
+      <p class="hinglish">join() ke bina Hello turant print hota — main thread rukta nahi. join() lagate hi main t1 ka intezaar karta hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Thread Naming <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Default naam: <span class="hl">Thread-0, Thread-1, ...</span> (JVM khud deta hai)</li>
+        <li>Custom naam doosre tarike:
+          <ul class="clean">
+            <li>Apni class mein <span class="hl">constructor banao → super(name) call karo</span> (Thread ka constructor)</li>
+            <li>Ya <code class="inline">new Thread(runnable, "naam")</code> — Thread ke constructor mein naam pass karo</li>
+          </ul>
+        </li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>MyThread.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">MyThread</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="kw">public</span> <span class="ty">MyThread</span>(String name) {
+        <span class="kw">super</span>(name);          <span class="cm">// Thread ka constructor — naam set</span>
+    }
+}
+<span class="cm">// use:</span>
+<span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>(<span class="st">"Vipul"</span>);
+<span class="cm">// output mein "Vipul" aayega, "Thread-0" nahi</span></pre>
+      </div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>setPriority() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <p>Multiple threads chal rahe hain — CPU kaise decide karega kaun ko zyada time do? Hum <span class="hl">khud priority set</span> kar sakte hain:</p>
+      <div class="prio-scale">
+        <div class="prio-box p-min"><div class="pv">1</div><div class="pn">Thread.MIN_PRIORITY</div></div>
+        <div class="prio-box p-norm"><div class="pv">5</div><div class="pn">Thread.NORM_PRIORITY (default)</div></div>
+        <div class="prio-box p-max"><div class="pv">10</div><div class="pn">Thread.MAX_PRIORITY</div></div>
+      </div>
+      <ul class="clean">
+        <li><code class="inline">t1.setPriority(Thread.MIN_PRIORITY)</code> — static constants use hote hain</li>
+        <li>Video ka demo: 3 threads (LOW, MEDIUM, HIGH priority) — <b>HIGH wala mostly pehle khatam hua</b></li>
+        <li><span class="hl" style="color:var(--warn)">DHYAAN:</span> Ye <span class="hl">strict rule NAHI — sirf HINT hai</span> JVM aur OS scheduler ko</li>
+        <li>Actual behavior depend karta hai: code kaisa hai, kitne cores hain, etc.</li>
+        <li>Priority <span class="hl-p">single core pe zyada noticeable</span> hoti hai — multi-core pe toh parallel execution ho sakta hai</li>
+      </ul>
+      <p class="hinglish">Jaise priority video 1 mein padhi thi — high priority ko zyada time slice. Bas wahi cheez yahan hum khud set kar rahe hain.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>interrupt() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Meaning: <span class="hl">"jo kar rahe ho wahin ruk jao"</span> — agar thread sleep/wait mein hai toh use utha do</li>
+        <li>Agar thread <span class="hl-p">sleep() mein hoga</span> aur interrupt() call hua → <span class="hl">InterruptedException throw</span> hota hai</li>
+        <li>Video ka demo: run() mein sleep(1000) tha + try-catch. main() ne <code class="inline">t1.interrupt()</code> kiya → <b>sleep interrupted</b> exception aaya, aur sleep ke baad wali line print hi nahi hui</li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runInterrupt(this)">▶ Run</button></div>
+        <pre><span class="cm">// run() mein:</span>
+<span class="kw">try</span> {
+    Thread.sleep(1000);                 <span class="cm">// 1 sec sota hai</span>
+    System.out.println(<span class="st">"Thread is running"</span>); <span class="cm">// ye print NAHI hoga</span>
+} <span class="kw">catch</span> (InterruptedException e) {
+    System.out.println(<span class="st">"Thread interrupted"</span>);
+}
+
+<span class="cm">// main() mein:</span>
+t1.start();
+t1.interrupt();  <span class="cm">// main ne t1 ko utha diya!</span></pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">Thread interrupted</div>
+          <div class="cline err">java.lang.InterruptedException: sleep interrupted</div>
+        </div>
+      </div>
+      <p class="hinglish">Interrupt = "Bhai uth jao!" — sote hue thread ko jhataka. Isi liye sleep() interrupted exception throw karta hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>yield() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Matlab: <span class="hl">"main apna CPU use yield karne ko ready hun — doosre threads ko bhi chance do"</span></li>
+        <li>Official: <i>"A hint to the scheduler that the current thread is willing to yield its current use of a processor. The scheduler is <b>free to ignore this hint</b>."</i></li>
+        <li>Bilkul <span class="hl-p">priority jaisa — ye bhi sirf HINT hai</span>, guarantee nahi</li>
+        <li>Video ka demo: 2 threads bina yield ke — ek thread apni saari iterations kar leta tha phir doosra. yield() lagane se dono ko <b>alternate chance</b> milne laga (t1, t2, t1, t2...)</li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>run() ke andar</span></div>
+        <pre><span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) {
+    System.out.println(Thread.currentThread().getName() + <span class="st">" is running"</span>);
+    Thread.yield();   <span class="cm">// har iteration ke baad: doosron ko chance do</span>
+}</pre>
+      </div>
+      <p class="hinglish">Pehle: t1 t1 t1 t1 t1 t2 t2 t2 t2 t2 (ek ekata). Yield ke baad: t1 t2 t1 t2 t1 t2... (dono ko chance). Par guarantee nahi — hint hai!</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>User vs Daemon Threads + setDaemon() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>User Threads</h3>
+      <ul class="clean">
+        <li>Wo threads jo <span class="hl">humara actual kaam (business logic)</span> karte hain — jo hum khud create karte hain</li>
+        <li><b>JVM user threads ka WAIT karta hai</b> — sab user threads khatam hone tak JVM band nahi hota</li>
+        <li>Example: 1 crore baar Hello World print karna hai — JVM wait karega, poora hone dega</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Daemon Threads</h3>
+      <ul class="clean">
+        <li><span class="hl">Background threads</span> — jaise Java ka <span class="hl-p">Garbage Collector</span></li>
+        <li><span class="hl" style="color:var(--bad)">JVM daemon threads ka WAIT NAHI karta!</span></li>
+        <li>Agar saare user threads khatam ho gaye → <b>JVM daemon threads ko maar kar band ho jata hai</b></li>
+        <li>Daemon banane ke liye: <code class="inline">t1.setDaemon(true)</code> — <b>start() se PEHLE</b> call karna hota hai</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Video ka demo — samajhne wala</h3>
+      <p><b>Case 1:</b> MyThread daemon banaya (infinite loop, Hello World print karta raha). main() khatam hua → JVM ne daemon ko <b>mar diya</b>. Kuch Hello Worlds print hue, phir sab band.</p>
+      <p style="margin-top:8px;"><b>Case 2:</b> Ek daemon (MyThread) + ek <span class="hl">user thread (t1)</span> dono chale. main() khatam → lekin t1 user thread hai, toh <b>JVM t1 ka wait kiya</b> — aur daemon bhi saath chalta raha.</p>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runDaemon(this)">▶ Run</button></div>
+        <pre><span class="ty">MyThread</span> daemon = <span class="kw">new</span> <span class="ty">MyThread</span>();  <span class="cm">// infinite loop mein Hello World</span>
+daemon.setDaemon(<span class="kw">true</span>);
+daemon.start();
+
+<span class="cm">// main() ka aakhri statement:</span>
+System.out.println(<span class="st">"Main done"</span>);
+<span class="cm">// main khatam → user threads koi nahi → JVM band → daemon bhi band!</span></pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">Hello World</div>
+          <div class="cline">Hello World</div>
+          <div class="cline">Main done</div>
+          <div class="cline">Hello World</div>
+          <div class="cline sys">(JVM band — daemon terminate ho gaya)</div>
+        </div>
+      </div>
+      <p class="hinglish">Daemon = "background mein faltu kaam" — JVM bolta hai "user threads khatam? Toh main band, daemon ko maro." User thread zinda hai toh JVM zinda.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <section id="s8" data-checkpoint="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Summary Table <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <table>
+        <tr><th>Method</th><th>Kya karta hai</th></tr>
+        <tr><td>start()</td><td>Naya thread banata hai, run() us thread mein chalta hai</td></tr>
+        <tr><td>run()</td><td>Overridden — thread ka kaam isi mein likhte hain</td></tr>
+        <tr><td>sleep(ms)</td><td>Current thread ko pause karta hai (InterruptedException handle karo)</td></tr>
+        <tr><td>join()</td><td>Caller thread rukta hai is thread ke khatam hone tak</td></tr>
+        <tr><td>setPriority()</td><td>1 (MIN), 5 (NORM), 10 (MAX) — <b>sirf hint</b>, guarantee nahi</td></tr>
+        <tr><td>getName()/naming</td><td>Default Thread-0... ya constructor se custom naam (super(name))</td></tr>
+        <tr><td>interrupt()</td><td>Sote/wait karte thread ko uthata hai → InterruptedException</td></tr>
+        <tr><td>yield()</td><td>Hint: "doosre threads ko chance do" — scheduler ignore kar sakta hai</td></tr>
+        <tr><td>setDaemon(true)</td><td>Thread background daemon ban jata hai — JVM iska wait nahi karta</td></tr>
+      </table>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s8">✓ Section done</button></div>
+  </section>
+
+  <section id="s9" data-checkpoint="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/12</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s9">✓ Section done</button></div>
+  </section>
+
+  <section id="s10" data-checkpoint="s10">
+    <div class="sec-head"><span class="sec-num">10</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">10 questions — saare methods cover.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s10">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Master Java Threads: Essential Methods to Elevate Your Coding!") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+<script>
+const KEY = 'mt-revision-v6';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= DEMO RUNS ================= */
+function runJoin(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  setTimeout(() => lines[0].classList.add('show'), 300);
+  setTimeout(() => lines[1].classList.add('show'), 2500);
+  btn.textContent = '↻ Run again';
+}
+function runInterrupt(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), 400 * (i + 1)));
+  btn.textContent = '↻ Run again';
+}
+function runDaemon(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), 450 * (i + 1)));
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'start() vs run() — core difference?', a: '<b>start() = naya thread</b> banake run() us mein chalata hai. <b>run() direct call = naya thread nahi</b>, normal method call' },
+  { q: 'join() kya karta hai?', a: 'Caller thread <b>is thread ke finish hone ka wait</b> karta hai. main() mein t1.join() = main ruk jayega' },
+  { q: 'Thread priorities ki values?', a: 'MIN = <b>1</b>, NORM = <b>5</b> (default), MAX = <b>10</b> — static constants Thread class ke' },
+  { q: 'setPriority() guarantee deta hai ki high priority wale pehle chalega?', a: '<b>NAHI</b> — ye sirf <b>hint</b> hai JVM/OS scheduler ko. Single core pe zyada noticeable hota hai' },
+  { q: 'Thread ko custom naam kaise dete hain?', a: 'Constructor banao → <b>super(name)</b> call karo. Ya <b>new Thread(runnable, "naam")</b>' },
+  { q: 'interrupt() kya karta hai?', a: 'Sleep/wait mein diye thread ko <b>uthata hai</b> → <b>InterruptedException</b> throw hota hai' },
+  { q: 'yield() kya karta hai?', a: 'Scheduler ko <b>hint</b>: "main CPU yield karne ko ready hun, doosre threads ko chance do" — scheduler <b>ignore bhi kar sakta hai</b>' },
+  { q: 'User threads kya hain?', a: 'Humara <b>actual kaam/business logic</b> karne wale threads — <b>JVM inka wait karta hai</b>' },
+  { q: 'Daemon threads kya hain?', a: '<b>Background threads</b> (jaise Garbage Collector) — <b>JVM inka wait NAHI karta</b>. User threads khatam = daemon bhi khatam' },
+  { q: 'setDaemon(true) kab call karna hai?', a: '<b>start() se PEHLE</b> — warna IllegalThreadStateException' },
+  { q: 'JVM kab terminate hota hai?', a: 'Jab <b>saare USER threads</b> khatam ho jayein. Daemon threads zinda hon tab bhi JVM band ho jata hai' },
+  { q: 'Garbage Collector kis type ka thread hai?', a: '<b>Daemon thread</b> — background mein chalta hai, JVM iska wait nahi karta' }
+];
+let fcIdx = 0;
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'start() kya karta hai?',
+    opts: ['run() ko directly call karta hai', 'Naya thread create karke run() us mein chalata hai', 'Thread ko pause karta hai', 'Thread ko band karta hai'],
+    ans: 1,
+    ex: '<b>start() = naya thread</b>. run() direct call karne se naya thread nahi banta — normal method call hota hai.'
+  },
+  {
+    q: 'main() mein t1.join() — kya hoga?',
+    opts: ['t1, main ka wait karega', 'main thread t1 ke finish hone ka wait karega', 't1 foran band ho jayega', 'kuch nahi hoga'],
+    ans: 1,
+    ex: 'join() = caller waits. <b>main rukega jab tak t1 khatam nahi hota</b> — isliye join ke baad wala code late chalta hai.'
+  },
+  {
+    q: 'Thread.MAX_PRIORITY ki value?',
+    opts: ['1', '5', '10', '100'],
+    ans: 2,
+    ex: 'MIN = 1, NORM = 5 (default), MAX = <b>10</b>.'
+  },
+  {
+    q: 'High priority wala thread hamesha pehle khatam hoga — sahi ya galat?',
+    opts: ['Sahi — rule hai', 'Galat — sirf hint hai, guarantee nahi', 'Sahi — sirf multi-core pe', 'Galat — priority ka koi effect nahi'],
+    ans: 1,
+    ex: 'Priority <b>sirf hint hai</b> JVM/OS scheduler ko. Actual behavior code, cores, aur bhi cheezon pe depend karta hai.'
+  },
+  {
+    q: 'Thread ko custom naam dene ka tarika (extends Thread case)?',
+    opts: ['t1.name = "Xipul"', 'Constructor mein super(name)', 't1.rename("Vipul")', 'Naam change nahi hota'],
+    ans: 1,
+    ex: 'Apne constructor se <b>super(name)</b> call karo — Thread ka name-parameter constructor naam set kar deta hai.'
+  },
+  {
+    q: 't1.interrupt() kya karta hai (agar t1 sleep mein hai)?',
+    opts: ['t1 foran terminate ho jata hai', 'InterruptedException throw hota hai', 'Kuch nahi hota', 't1 restart ho jata hai'],
+    ans: 1,
+    ex: 'Sleep mein interrupt = <b>InterruptedException</b> — thread jag jata hai, catch block chalta hai.'
+  },
+  {
+    q: 'yield() ka full matlab?',
+    opts: ['Thread foran ruk jata hai', 'Hint: current thread CPU yield karne ko ready hai — doosron ko chance do', 'Thread ka priority badhta hai', 'Thread daemon ban jata hai'],
+    ans: 1,
+    ex: 'yield = <b>hint to scheduler</b>. "The scheduler is free to ignore this hint" — guarantee nahi!'
+  },
+  {
+    q: 'Daemon thread kya hai?',
+    opts: ['High priority thread', 'Background thread — JVM iska wait nahi karta', 'Main thread ka doosra naam', 'Bina run() wala thread'],
+    ans: 1,
+    ex: 'Daemon = <b>background thread</b> (jaise GC). User threads khatam hote hi JVM daemon ko maar kar band ho jata hai.'
+  },
+  {
+    q: 'setDaemon(true) start() ke BAAD call kiya?',
+    opts: ['Chalega theek se', 'Thread daemon ban jayega', 'IllegalThreadStateException aayegi', 'Thread restart ho jayega'],
+    ans: 2,
+    ex: 'setDaemon <b>start() se pehle</b> call karna zaroori hai — warna exception.'
+  },
+  {
+    q: 'Ek user thread + ek daemon thread chal rahe hain. main() khatam. JVM?',
+    opts: ['Foran band ho jayega', 'Dono threads ka wait karega', 'Sirf user thread ka wait karega (daemon chalta rahega)', 'Daemon ko wait karega'],
+    ans: 2,
+    ex: 'JVM <b>sirf user threads ka wait</b> karta hai. User thread zinda = JVM zinda. Daemon apne aap saath chalta rahega.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Saare methods pakke ho gaye.';
+    else if (score >= 7) msg = 'Badhiya! Ek-do points dobara revise kar lo.';
+    else msg = 'Methods wala page + flashcards dobara dekho!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

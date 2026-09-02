@@ -1,0 +1,203 @@
+<script>
+const KEY = 'mt-revision-v6';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= DEMO RUNS ================= */
+function runJoin(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  setTimeout(() => lines[0].classList.add('show'), 300);
+  setTimeout(() => lines[1].classList.add('show'), 2500);
+  btn.textContent = '↻ Run again';
+}
+function runInterrupt(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), 400 * (i + 1)));
+  btn.textContent = '↻ Run again';
+}
+function runDaemon(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), 450 * (i + 1)));
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'start() vs run() — core difference?', a: '<b>start() = naya thread</b> banake run() us mein chalata hai. <b>run() direct call = naya thread nahi</b>, normal method call' },
+  { q: 'join() kya karta hai?', a: 'Caller thread <b>is thread ke finish hone ka wait</b> karta hai. main() mein t1.join() = main ruk jayega' },
+  { q: 'Thread priorities ki values?', a: 'MIN = <b>1</b>, NORM = <b>5</b> (default), MAX = <b>10</b> — static constants Thread class ke' },
+  { q: 'setPriority() guarantee deta hai ki high priority wale pehle chalega?', a: '<b>NAHI</b> — ye sirf <b>hint</b> hai JVM/OS scheduler ko. Single core pe zyada noticeable hota hai' },
+  { q: 'Thread ko custom naam kaise dete hain?', a: 'Constructor banao → <b>super(name)</b> call karo. Ya <b>new Thread(runnable, "naam")</b>' },
+  { q: 'interrupt() kya karta hai?', a: 'Sleep/wait mein diye thread ko <b>uthata hai</b> → <b>InterruptedException</b> throw hota hai' },
+  { q: 'yield() kya karta hai?', a: 'Scheduler ko <b>hint</b>: "main CPU yield karne ko ready hun, doosre threads ko chance do" — scheduler <b>ignore bhi kar sakta hai</b>' },
+  { q: 'User threads kya hain?', a: 'Humara <b>actual kaam/business logic</b> karne wale threads — <b>JVM inka wait karta hai</b>' },
+  { q: 'Daemon threads kya hain?', a: '<b>Background threads</b> (jaise Garbage Collector) — <b>JVM inka wait NAHI karta</b>. User threads khatam = daemon bhi khatam' },
+  { q: 'setDaemon(true) kab call karna hai?', a: '<b>start() se PEHLE</b> — warna IllegalThreadStateException' },
+  { q: 'JVM kab terminate hota hai?', a: 'Jab <b>saare USER threads</b> khatam ho jayein. Daemon threads zinda hon tab bhi JVM band ho jata hai' },
+  { q: 'Garbage Collector kis type ka thread hai?', a: '<b>Daemon thread</b> — background mein chalta hai, JVM iska wait nahi karta' }
+];
+let fcIdx = 0;
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'start() kya karta hai?',
+    opts: ['run() ko directly call karta hai', 'Naya thread create karke run() us mein chalata hai', 'Thread ko pause karta hai', 'Thread ko band karta hai'],
+    ans: 1,
+    ex: '<b>start() = naya thread</b>. run() direct call karne se naya thread nahi banta — normal method call hota hai.'
+  },
+  {
+    q: 'main() mein t1.join() — kya hoga?',
+    opts: ['t1, main ka wait karega', 'main thread t1 ke finish hone ka wait karega', 't1 foran band ho jayega', 'kuch nahi hoga'],
+    ans: 1,
+    ex: 'join() = caller waits. <b>main rukega jab tak t1 khatam nahi hota</b> — isliye join ke baad wala code late chalta hai.'
+  },
+  {
+    q: 'Thread.MAX_PRIORITY ki value?',
+    opts: ['1', '5', '10', '100'],
+    ans: 2,
+    ex: 'MIN = 1, NORM = 5 (default), MAX = <b>10</b>.'
+  },
+  {
+    q: 'High priority wala thread hamesha pehle khatam hoga — sahi ya galat?',
+    opts: ['Sahi — rule hai', 'Galat — sirf hint hai, guarantee nahi', 'Sahi — sirf multi-core pe', 'Galat — priority ka koi effect nahi'],
+    ans: 1,
+    ex: 'Priority <b>sirf hint hai</b> JVM/OS scheduler ko. Actual behavior code, cores, aur bhi cheezon pe depend karta hai.'
+  },
+  {
+    q: 'Thread ko custom naam dene ka tarika (extends Thread case)?',
+    opts: ['t1.name = "Xipul"', 'Constructor mein super(name)', 't1.rename("Vipul")', 'Naam change nahi hota'],
+    ans: 1,
+    ex: 'Apne constructor se <b>super(name)</b> call karo — Thread ka name-parameter constructor naam set kar deta hai.'
+  },
+  {
+    q: 't1.interrupt() kya karta hai (agar t1 sleep mein hai)?',
+    opts: ['t1 foran terminate ho jata hai', 'InterruptedException throw hota hai', 'Kuch nahi hota', 't1 restart ho jata hai'],
+    ans: 1,
+    ex: 'Sleep mein interrupt = <b>InterruptedException</b> — thread jag jata hai, catch block chalta hai.'
+  },
+  {
+    q: 'yield() ka full matlab?',
+    opts: ['Thread foran ruk jata hai', 'Hint: current thread CPU yield karne ko ready hai — doosron ko chance do', 'Thread ka priority badhta hai', 'Thread daemon ban jata hai'],
+    ans: 1,
+    ex: 'yield = <b>hint to scheduler</b>. "The scheduler is free to ignore this hint" — guarantee nahi!'
+  },
+  {
+    q: 'Daemon thread kya hai?',
+    opts: ['High priority thread', 'Background thread — JVM iska wait nahi karta', 'Main thread ka doosra naam', 'Bina run() wala thread'],
+    ans: 1,
+    ex: 'Daemon = <b>background thread</b> (jaise GC). User threads khatam hote hi JVM daemon ko maar kar band ho jata hai.'
+  },
+  {
+    q: 'setDaemon(true) start() ke BAAD call kiya?',
+    opts: ['Chalega theek se', 'Thread daemon ban jayega', 'IllegalThreadStateException aayegi', 'Thread restart ho jayega'],
+    ans: 2,
+    ex: 'setDaemon <b>start() se pehle</b> call karna zaroori hai — warna exception.'
+  },
+  {
+    q: 'Ek user thread + ek daemon thread chal rahe hain. main() khatam. JVM?',
+    opts: ['Foran band ho jayega', 'Dono threads ka wait karega', 'Sirf user thread ka wait karega (daemon chalta rahega)', 'Daemon ko wait karega'],
+    ans: 2,
+    ex: 'JVM <b>sirf user threads ka wait</b> karta hai. User thread zinda = JVM zinda. Daemon apne aap saath chalta rahega.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Saare methods pakke ho gaye.';
+    else if (score >= 7) msg = 'Badhiya! Ek-do points dobara revise kar lo.';
+    else msg = 'Methods wala page + flashcards dobara dekho!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

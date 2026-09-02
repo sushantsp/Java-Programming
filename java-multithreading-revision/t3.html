@@ -1,0 +1,276 @@
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Summary Table <span class="badge video">FROM VIDEO</span></h2></div>
+    <div class="card">
+      <table>
+        <tr><th>Concept</th><th>One-liner</th></tr>
+        <tr><td>Intrinsic lock</td><td>Inside every object; engaged via synchronized; automatic, zero control</td></tr>
+        <tr><td>Explicit lock</td><td>Lock interface + ReentrantLock; you control lock/unlock timing</td></tr>
+        <tr><td>Problem with synchronized</td><td>Waiting threads block <b>indefinitely</b> — no timeout, no way out</td></tr>
+        <tr><td>tryLock()</td><td>Instant attempt — true/false, no waiting</td></tr>
+        <tr><td>tryLock(time, unit)</td><td>Bounded wait — true if acquired in time, false on timeout; throws InterruptedException</td></tr>
+        <tr><td>lock()</td><td>Unbounded wait — same as synchronized, no advantage</td></tr>
+        <tr><td>lockInterruptibly()</td><td>Unbounded wait, but an interrupt can break the waiting thread out</td></tr>
+        <tr><td>unlock()</td><td>Releases the lock — always in finally</td></tr>
+        <tr><td>Reentrancy</td><td>Same thread can acquire the same lock again; hold-count mechanism; every lock pairs with an unlock</td></tr>
+      </table>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <section id="s8" data-checkpoint="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Click a card to flip. Try answering first!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/12</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s8">✓ Section done</button></div>
+  </section>
+
+  <section id="s9" data-checkpoint="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">10 questions.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s9">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Java Locks Explained! Why Senior Developers LOVE ReentrantLock") • Progress saved in your browser •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'mt-revision-v8';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Reset progress?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= BANK DEMO ================= */
+function runBank(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  const delays = [300, 800, 1500, 2200, 5000, 5600];
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), delays[i]));
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= REENTRANCY COUNT DEMO ================= */
+const CD_STEPS = [
+  { count: '—',  note: '', cls: '' },
+  { count: '1',  note: 'outer() calls lock() — acquired, hold count = 1. Lock is now held.', cls: 'locked' },
+  { count: '2',  note: 'inner() calls lock() on the SAME lock — allowed! Same thread re-enters, count = 2. (A non-reentrant lock would be stuck here forever — self-deadlock.)', cls: 'locked' },
+  { count: '1',  note: 'inner() calls unlock() — count drops to 1. Lock is STILL held (not fully released yet).', cls: 'locked' },
+  { count: '0',  note: 'outer() calls unlock() — count hits 0. Lock fully released — another thread may now acquire it.', cls: 'zero' }
+];
+let cdIdx = 0;
+function cdNext() {
+  cdIdx++;
+  if (cdIdx >= CD_STEPS.length) cdIdx = 1;
+  const s = CD_STEPS[cdIdx];
+  const box = document.getElementById('cd-' + cdIdx);
+  document.querySelectorAll('.cd-step').forEach(el => el.classList.remove('locked', 'zero'));
+  box.classList.add(s.cls);
+  box.querySelector('.cd-count').textContent = s.count;
+  document.getElementById('cd-note').textContent = s.note;
+  document.getElementById('cd-btn').textContent = cdIdx === CD_STEPS.length - 1 ? '↻ Start again' : 'Next step →';
+}
+function cdReset() {
+  cdIdx = 0;
+  document.querySelectorAll('.cd-step').forEach(el => el.classList.remove('locked', 'zero'));
+  for (let i = 1; i <= 4; i++) document.getElementById('cd-' + i).querySelector('.cd-count').textContent = '0';
+  document.getElementById('cd-note').textContent = '';
+  document.getElementById('cd-btn').textContent = 'Next step →';
+}
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'What are the two types of locks in Java?', a: '<b>Intrinsic</b> — built into every object, used via synchronized (automatic). <b>Explicit</b> — Lock interface objects you control manually' },
+  { q: 'What is the core problem with synchronized?', a: 'A waiting thread blocks <b>indefinitely</b> — no timeout, no control over who holds the lock or for how long' },
+  { q: 'Lock vs ReentrantLock — what is what?', a: '<b>Lock is an interface</b>, <b>ReentrantLock is the implementation class</b> you instantiate' },
+  { q: 'What does tryLock() do?', a: '<b>Immediate attempt</b> — returns true if the lock was free (and acquires it), false if busy. No waiting at all' },
+  { q: 'What does tryLock(1, TimeUnit.SECONDS) do?', a: 'Waits <b>up to 1 second</b> — true if acquired in time, false on timeout. Throws <b>InterruptedException</b> because it waits' },
+  { q: 'Why does tryLock(time) throw InterruptedException but plain tryLock() does not?', a: 'Only code that <b>waits</b> can be interrupted. Plain tryLock never waits; the timed version does' },
+  { q: 'Where must unlock() be called and why?', a: 'In a <b>finally block</b> — so the lock is released even if an exception fires inside the critical section' },
+  { q: 'What does lockInterruptibly() offer?', a: 'Unbounded waiting like lock(), but a <b>waiting thread can be interrupted</b> from outside' },
+  { q: 'Why is it called REENTRANT Lock?', a: 'The <b>same thread can acquire the same lock again</b> — a hold count tracks acquisitions; release happens when count returns to 0' },
+  { q: 'outer() locks, then calls inner() which locks the same lock. What happens?', a: 'Works fine with ReentrantLock — count goes 1 → 2. A non-reentrant lock would <b>self-deadlock</b>' },
+  { q: 'What happens on one EXTRA unlock() call?', a: 'Count would go below zero → <b>IllegalMonitorStateException</b>' },
+  { q: 'Good practice when catching InterruptedException?', a: 'Call <b>Thread.currentThread().interrupt()</b> in catch — restore the interrupt status so monitoring/cleanup code can still detect it' }
+];
+let fcIdx = 0;
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'What lock does the synchronized keyword use?',
+    opts: ['A ReentrantLock you must create', 'The intrinsic lock built into every Java object', 'No lock at all', 'A global JVM lock'],
+    ans: 1,
+    ex: 'Every object has a built-in <b>intrinsic lock</b> — synchronized engages it automatically.'
+  },
+  {
+    q: 'The bank example: t1 holds a synchronized method and sleeps 3s. What is t2 doing?',
+    opts: ['Running in parallel', 'Sleeping along with t1', 'Blocked — waiting indefinitely with no timeout', 'It terminated'],
+    ans: 2,
+    ex: 'synchronized offers no timeout — t2 waits however long it takes. That is the core problem.'
+  },
+  {
+    q: 'Lock lock = new ___ () — what completes this correctly?',
+    opts: ['Lock()', 'ReentrantLock()', 'ThreadLock()', 'SynchronizedLock()'],
+    ans: 1,
+    ex: 'Lock is an interface — <b>ReentrantLock</b> is the implementation class.'
+  },
+  {
+    q: 'tryLock() returns false. What does that mean?',
+    opts: ['An exception occurred', 'The lock is held by another thread — and this thread did NOT wait', 'The lock was acquired', 'The thread was interrupted'],
+    ans: 1,
+    ex: 'tryLock() = instant attempt. <b>false = busy, walk away</b> — zero waiting.'
+  },
+  {
+    q: 'tryLock(1, TimeUnit.SECONDS) throws which checked exception?',
+    opts: ['IOException', 'IllegalStateException', 'InterruptedException', 'TimeoutException'],
+    ans: 2,
+    ex: 'It <b>waits</b> for up to 1 second — and anything that waits can be interrupted.'
+  },
+  {
+    q: 'Why must unlock() be inside finally?',
+    opts: ['For performance', 'So the lock releases even if an exception is thrown', 'It is just style', 'finally runs faster'],
+    ans: 1,
+    ex: 'An exception between lock() and unlock() would <b>leak the lock</b> — finally guarantees release.'
+  },
+  {
+    q: 'A thread holding a ReentrantLock calls lock() again on the same lock. Result?',
+    opts: ['Deadlock', 'IllegalMonitorStateException', 'Allowed — hold count increments', 'The lock is released'],
+    ans: 2,
+    ex: '<b>Reentrancy</b> — the same thread may re-acquire. Count goes 1 → 2.'
+  },
+  {
+    q: 'When is a ReentrantLock fully released?',
+    opts: ['On the first unlock()', 'When count returns to zero — every lock() paired with an unlock()', 'After 3 seconds', 'When the thread sleeps'],
+    ans: 1,
+    ex: 'Hold-count mechanism: N locks need N unlocks. Count 0 = released.'
+  },
+  {
+    q: 'You call unlock() one more time than you locked. What happens?',
+    ans_note: true,
+    opts: ['Nothing', 'The lock resets', 'IllegalMonitorStateException', 'The thread waits'],
+    ans: 2,
+    ex: 'Count would drop below zero — Java throws <b>IllegalMonitorStateException</b>.'
+  },
+  {
+    q: 'Best practice in a catch block for InterruptedException?',
+    opts: ['Leave it empty', 'Just log and move on', 'Thread.currentThread().interrupt() — restore the status', 'Call sleep() again'],
+    ans: 2,
+    ex: 'Restoring the interrupt flag keeps <b>isInterrupted()</b> checks working — logging alone counts as ignoring it.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Locks mastered — senior-developer territory.';
+    else if (score >= 7) msg = 'Strong! Revisit the one or two misses.';
+    else msg = 'Work through the notes + flashcards once more.';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

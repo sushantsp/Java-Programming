@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JVM & Multithreading — Revision | Engineering Digest</title>
+<style>
+  :root {
+    --bg: #0b0f17;
+    --bg2: #111827;
+    --card: #151c2c;
+    --card2: #1a2338;
+    --border: #263148;
+    --text: #e6edf7;
+    --muted: #93a1b8;
+    --accent: #6c8cff;
+    --accent2: #2dd4bf;
+    --good: #34d399;
+    --bad: #f87171;
+    --warn: #fbbf24;
+    --t1: #f87171; --t2: #60a5fa; --t3: #34d399; --t4: #fbbf24;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(11,15,23,.85);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 0;
+  }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; letter-spacing: .2px; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s ease; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 30px; text-align: right; }
+
+  section { margin-top: 44px; scroll-margin-top: 80px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; flex-wrap: wrap; }
+  .sec-num {
+    font-size: 12px; font-weight: 700; color: var(--accent);
+    border: 1px solid var(--border); background: var(--card);
+    border-radius: 8px; padding: 2px 9px;
+  }
+  .sec-head h2 { font-size: 21px; font-weight: 800; }
+  .sec-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px;
+  }
+  .card h3 { font-size: 15.5px; margin-bottom: 8px; }
+  .card p { color: #c7d2e4; font-size: 14.5px; }
+  .card .hinglish { color: var(--muted); font-style: italic; font-size: 13px; margin-top: 8px; }
+  .hl { color: var(--accent2); font-weight: 600; }
+  .hl-p { color: #a78bfa; font-weight: 600; }
+  code.inline {
+    background: #0d1424; border: 1px solid var(--border); padding: 1px 7px;
+    border-radius: 6px; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px; color: var(--accent2);
+  }
+  .badge {
+    display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: .8px;
+    padding: 3px 9px; border-radius: 99px; margin-left: 10px; vertical-align: middle;
+  }
+  .badge.video { background: rgba(108,140,255,.15); color: var(--accent); border: 1px solid rgba(108,140,255,.4); }
+  .badge.bonus { background: rgba(167,139,250,.12); color: #a78bfa; border: 1px solid rgba(167,139,250,.4); }
+
+  ul.clean { list-style: none; }
+  ul.clean li { padding: 7px 0 7px 26px; position: relative; color: #c7d2e4; font-size: 14.5px; }
+  ul.clean li::before { content: "▸"; position: absolute; left: 6px; color: var(--accent); font-weight: 700; }
+
+  .done-row { display: flex; justify-content: flex-end; margin-top: 4px; }
+  .done-btn {
+    cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600;
+    background: var(--card2); color: var(--muted);
+    border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px;
+    transition: all .2s;
+  }
+  .done-btn:hover { border-color: var(--accent); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .code {
+    background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px;
+    overflow: hidden; margin: 12px 0;
+  }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; }
+  .run-btn {
+    cursor: pointer; background: linear-gradient(90deg, var(--accent), #8b5cf6);
+    color: white; border: none; border-radius: 7px; padding: 4px 14px;
+    font-size: 11.5px; font-weight: 700;
+  }
+  .console {
+    background: #050810; border-top: 1px solid var(--border); padding: 12px 16px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px; display: none;
+  }
+  .console .cline { opacity: 0; transform: translateY(4px); transition: all .3s; color: #a7f3d0; }
+  .console .cline.sys { color: var(--muted); }
+  .console .cline.show { opacity: 1; transform: none; }
+  .console-label { font-size: 10px; color: var(--muted); letter-spacing: 1px; margin-bottom: 6px; text-transform: uppercase; }
+
+  .sim-controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+  .seg { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .seg button {
+    background: var(--card2); color: var(--muted); border: none; padding: 8px 16px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
+  }
+  .seg button.active { background: var(--accent); color: white; }
+  .sim-btn {
+    background: var(--card2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .sim-btn:hover { border-color: var(--accent); }
+  .sim-btn.running { background: rgba(248,113,113,.15); border-color: var(--bad); color: var(--bad); }
+  .sim-metrics { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 14px; }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 16px; }
+  .metric .mv { font-size: 20px; font-weight: 800; color: var(--accent2); }
+  .metric .ml { font-size: 10.5px; color: var(--muted); letter-spacing: .5px; text-transform: uppercase; }
+  .core-label { font-size: 11.5px; color: var(--muted); font-weight: 700; letter-spacing: 1px; margin: 10px 0 5px; text-transform: uppercase; }
+  .lane {
+    height: 26px; background: #0a0f1c; border: 1px solid var(--border);
+    border-radius: 8px; display: flex; overflow: hidden; margin-bottom: 8px;
+  }
+  .lane .seg-b { flex: 1; transition: background .15s; }
+  .thread-status { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .tstat { display: flex; align-items: center; gap: 7px; background: var(--bg2); border: 1px solid var(--border); border-radius: 99px; padding: 4px 13px 4px 7px; font-size: 12.5px; font-weight: 600; }
+  .tdot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+  .tstat.done { border-color: var(--good); color: var(--good); }
+  .sim-note { margin-top: 14px; font-size: 13.5px; color: var(--warn); background: rgba(251,191,36,.07); border: 1px solid rgba(251,191,36,.25); padding: 10px 14px; border-radius: 10px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; padding: 10px 14px; color: var(--accent); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: #c7d2e4; }
+  tr:last-child td { border-bottom: none; }
+  td:first-child { font-weight: 700; color: var(--text); white-space: nowrap; }
+
+  .fc-stage { perspective: 1200px; margin: 18px 0; }
+  .fc-card {
+    position: relative; width: 100%; min-height: 220px; cursor: pointer;
+    transform-style: preserve-3d; transition: transform .55s cubic-bezier(.4,1.4,.6,1);
+  }
+  .fc-card.flip { transform: rotateY(180deg); }
+  .fc-face {
+    position: absolute; inset: 0; backface-visibility: hidden;
+    border-radius: var(--radius); border: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 28px 34px; text-align: center;
+  }
+  .fc-front { background: linear-gradient(135deg, #1a2338, #151c2c); }
+  .fc-back { background: linear-gradient(135deg, #12312e, #0f2622); transform: rotateY(180deg); border-color: rgba(45,212,191,.35); }
+  .fc-q { font-size: 18px; font-weight: 700; }
+  .fc-a { font-size: 15px; color: #b9e8dd; }
+  .fc-hint { position: absolute; bottom: 14px; font-size: 10.5px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+  .fc-nav { display: flex; gap: 10px; justify-content: center; align-items: center; flex-wrap: wrap; }
+  .fc-count { font-size: 12.5px; color: var(--muted); font-weight: 600; min-width: 60px; text-align: center; }
+
+  .q-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .q-text { font-size: 15px; font-weight: 700; margin-bottom: 13px; }
+  .q-num { color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: 1px; display: block; margin-bottom: 4px; }
+  .opt {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 10px; padding: 11px 15px; margin-bottom: 8px;
+    font-size: 14px; font-family: inherit; transition: all .15s;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--accent); background: var(--card2); }
+  .opt:disabled { cursor: default; opacity: .85; }
+  .opt.correct { border-color: var(--good); background: rgba(52,211,153,.12); color: var(--good); font-weight: 700; }
+  .opt.wrong { border-color: var(--bad); background: rgba(248,113,113,.1); color: var(--bad); }
+  .expl {
+    display: none; margin-top: 10px; font-size: 13px; color: var(--muted);
+    background: var(--bg2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0;
+  }
+  .expl.show { display: block; }
+  .quiz-score {
+    display: none; text-align: center; padding: 24px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--radius); margin-top: 18px;
+  }
+  .quiz-score .big { font-size: 40px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .quiz-score .msg { color: var(--muted); font-size: 14px; margin-top: 4px; }
+
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+  .predict-opts { display: flex; flex-direction: column; gap: 8px; }
+  @media (max-width: 640px) {
+    .topbar h1 { font-size: 13px; }
+    .sec-head h2 { font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <div>
+      <h1>How JVM Handles Multithreading</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 3 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Multithreading in Java <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Java multithreading support karta hai taaki developers aisi applications bana sakein jo system ke resources ko <b>completely utilize</b> kar sakein.</p>
+
+    <div class="card">
+      <h3>Definition</h3>
+      <p><span class="hl">Multithreading = concurrent execution of 2 or more threads to maximize CPU utilization.</span></p>
+      <p class="hinglish">Simple si baat — CPU ko baitha ke waste nahi karna, uske har moment ko kaam karwana.</p>
+    </div>
+
+    <div class="card">
+      <h3>Ye capabilities kahan se aati hain?</h3>
+      <p>Java ki multithreading capabilities <span class="hl-p">java.lang package</span> ka part hain — isliye concurrent execution implement karna <b>easy</b> hai. <code class="inline">Thread</code> class aur <code class="inline">Runnable</code> interface dono isi package mein hain.</p>
+      <p class="hinglish">Matlab alag se kuch install karne ki zaroorat nahi — saari kahani built-in hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Single Core vs Multi-Core <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">JVM threads ko handle kaise karta hai — ye is par depend karta hai ki CPU mein ek core hai ya multiple.</p>
+
+    <div class="card">
+      <h3>Single Core Environment</h3>
+      <ul class="clean">
+        <li>Java ka multithreading <span class="hl">JVM aur OS</span> dono manage karte hain</li>
+        <li>Wo threads ke beech <b>switch</b> karte hain — taaki <span class="hl-p">illusion of concurrency</span> mile</li>
+        <li>Saare threads <b>single core ko share</b> karte hain</li>
+        <li>Iske liye <span class="hl">Time Slicing</span> use hota hai — har thread ko thoda-thoda time milta hai</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Multiple Core Environment</h3>
+      <ul class="clean">
+        <li>Java ka multithreading available cores ka <span class="hl">full advantage</span> le sakta hai</li>
+        <li>JVM threads ko <span class="hl-p">multiple cores pe distribute</span> kar sakta hai</li>
+        <li>Isse threads ki <span class="hl">true parallel execution</span> possible hoti hai</li>
+      </ul>
+      <p class="hinglish">Pehle sirf OS schedule kar raha tha — ab JVM bhi apna role nibhata hai, threads ko cores pe baant-ta hai.</p>
+    </div>
+
+    <div class="card" style="border-color: rgba(108,140,255,.35);">
+      <h3>🎮 Time-Slicing Simulator — khud try karo!</h3>
+      <p style="margin-bottom:14px;">4 threads (T1–T4) hain, har ek ko complete hone ke liye <b>8 time slices</b> chahiye. Dekho single core pe kaam kitna slow + interleaved hota hai vs 4 cores pe kitna fast + parallel.</p>
+      <div class="sim-controls">
+        <div class="seg">
+          <button id="mode-single" class="active" onclick="setMode('single')">1 Core</button>
+          <button id="mode-multi" onclick="setMode('multi')">4 Cores</button>
+        </div>
+        <button class="sim-btn" id="sim-run" onclick="toggleSim()">▶ Run</button>
+      </div>
+      <div class="sim-metrics">
+        <div class="metric"><div class="mv" id="m-ticks">0</div><div class="ml">Time Ticks</div></div>
+        <div class="metric"><div class="mv" id="m-done">0/4</div><div class="ml">Threads Done</div></div>
+        <div class="metric"><div class="mv" id="m-mode">Single</div><div class="ml">Mode</div></div>
+      </div>
+      <div id="cores-area"></div>
+      <div class="thread-status" id="t-status"></div>
+      <div class="sim-note" id="sim-note" style="display:none;"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Thread Basics <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Thread ki do definitions yaad rakho — dono interview mein kaam aati hain.</p>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Thread is a <span class="hl">lightweight process</span></li>
+        <li>Thread is the <span class="hl">smallest unit of processing</span></li>
+        <li>Java multithreading support karta hai apne <code class="inline">java.lang</code> ke <code class="inline">Thread</code> class aur <code class="inline">Runnable</code> interface se</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Bonus: Process vs Thread <span class="badge bonus">BONUS</span></h3>
+      <table>
+        <tr><th></th><th>Process</th><th>Thread</th></tr>
+        <tr><td>Kya hai</td><td>Program in execution</td><td>Process ka lightweight unit</td></tr>
+        <tr><td>Memory</td><td>Alag-alag address space</td><td>Same process ke threads memory share karte hain</td></tr>
+        <tr><td>Creation cost</td><td>Heavy (expensive)</td><td>Light (cheap)</td></tr>
+        <tr><td>Communication</td><td>Slow (IPC needed)</td><td>Fast (shared memory)</td></tr>
+        <tr><td>Example</td><td>Chrome browser = process</td><td>Har tab ke andar ke tasks = threads</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Bonus: Concurrency vs Parallelism <span class="badge bonus">BONUS</span></h3>
+      <ul class="clean">
+        <li><span class="hl">Concurrency</span> = tasks ka <b>interleaved</b> hona (ek core pe switch karke) — "ek waqt mein ek, par sab ko time milta hai"</li>
+        <li><span class="hl-p">Parallelism</span> = tasks ka <b>sach mein simultaneously</b> hona (multiple cores pe) — "ek waqt mein sab"</li>
+        <li>Single core → concurrency (illusion) &nbsp;|&nbsp; Multi core → true parallelism</li>
+      </ul>
+      <p class="hinglish">Video wali baat yaad karo: single core pe "illusion of concurrency", multi core pe "true parallel execution".</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The Main Thread <span class="badge video">FROM VIDEO</span></h2></div>
+    <p class="sec-sub">Sabse important point: Java program start hote hi ek thread immediately run hota hai.</p>
+
+    <div class="card">
+      <ul class="clean">
+        <li>When a Java program starts, <span class="hl">one thread begins running immediately</span></li>
+        <li>Us thread ka naam hota hai <span class="hl-p">main thread</span></li>
+        <li>Ye thread <span class="hl">main() method ko execute</span> karne ke liye responsible hota hai</li>
+      </ul>
+      <p class="hinglish">Matlab tumne ab tak saare programs (Hello World bhi) sirf <b>main thread</b> se chalaye ho — abhi actual multithreading use nahi hui!</p>
+    </div>
+
+    <div class="card">
+      <h3>Proof: Hello World bhi ek process hai</h3>
+      <p style="margin-bottom:4px;">Video mein simple program run kiya:</p>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        System.out.println(<span class="st">"Hello World"</span>);
+    }
+}</pre>
+      </div>
+      <p>Output mein <code class="inline">Process finished with exit code 0</code> dikhta hai — matlab <b>ek process chali</b>, aur us process mein <b>ek hi thread</b> tha: <span class="hl">main</span>.</p>
+    </div>
+
+    <div class="card">
+      <h3>Proof: Thread ka naam khud dekho</h3>
+      <p style="margin-bottom:4px;"><code class="inline">Thread.currentThread().getName()</code> — chalane wale thread ka naam batata hai:</p>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runDemo(this)">▶ Run</button></div>
+        <pre><span class="kw">public class</span> <span class="ty">Main</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        System.out.println(<span class="st">"Hello World"</span>);
+        System.out.println(<span class="mt">Thread.currentThread()</span>.getName());
+    }
+}</pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">Hello World</div>
+          <div class="cline">main</div>
+          <div class="cline sys">Process finished with exit code 0</div>
+        </div>
+      </div>
+      <p class="hinglish">Output <b>"main"</b> — proof ho gaya ki main thread hi chal raha tha.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Predict the Output <span class="badge bonus">BONUS</span></h2></div>
+    <p class="sec-sub">Concept check — dimaag mein chalao, phir option dabao.</p>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Test</span> {
+    <span class="kw">public static void</span> <span class="mt">show</span>() {
+        System.out.println(<span class="mt">Thread.currentThread()</span>.getName());
+    }
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        System.out.println(<span class="mt">Thread.currentThread()</span>.getName());
+        show();
+    }
+}</pre>
+      </div>
+      <div class="predict-opts" id="predict1">
+        <button class="opt" data-ans="A" onclick="checkPredict(this,'predict1','A','B')">A) main, phir Exception — show() mein thread nahi hota</button>
+        <button class="opt" data-ans="B" onclick="checkPredict(this,'predict1','B','B')">B) main&nbsp;&nbsp;→&nbsp;&nbsp;main</button>
+        <button class="opt" data-ans="C" onclick="checkPredict(this,'predict1','C','B')">C) main&nbsp;&nbsp;→&nbsp;&nbsp;Thread-0</button>
+      </div>
+      <div class="expl" id="predict1-expl"><b>Answer: B</b> — show() bhi usi <b>main thread</b> se call ho raha hai (main() → show()). Naya thread kabhi create hi nahi hua, isliye dono jagah "main" print hoga.</div>
+    </div>
+
+    <div class="card">
+      <div class="code">
+        <div class="code-head"><span>Test.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Test</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        System.out.println(<span class="mt">Thread.currentThread()</span>.getName());
+    }
+}</pre>
+      </div>
+      <div class="predict-opts" id="predict2">
+        <button class="opt" onclick="checkPredict(this,'predict2','A','C')">A) main thread&nbsp;&nbsp;→&nbsp;&nbsp;Thread-1</button>
+        <button class="opt" onclick="checkPredict(this,'predict2','B','C')">B) Exception — main thread exist nahi karta</button>
+        <button class="opt" onclick="checkPredict(this,'predict2','C','C')">C) main</button>
+      </div>
+      <div class="expl" id="predict2-expl"><b>Answer: C</b> — Java program start hote hi <b>main thread</b> immediately run hota hai, aur wahi main() execute karta hai. Uska naam hota hai "main".</div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="sim-btn" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/10</div>
+      <button class="sim-btn" onclick="fcNext()">Next →</button>
+      <button class="sim-btn" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">8 questions — video + bonus content se. Instant feedback milega.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "How JVM handles multithreading?") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+<script>
+/* ================= PROGRESS ================= */
+const KEY = 'jvm-mt-revision-v1';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= DEMO RUN ================= */
+function runDemo(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), 350 * (i + 1)));
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= PREDICT ================= */
+function checkPredict(btn, parentId, chosen, correct) {
+  const parent = document.getElementById(parentId);
+  parent.querySelectorAll('.opt').forEach(o => o.disabled = true);
+  if (chosen === correct) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.opt').forEach(o => {
+      if (o.getAttribute('onclick').includes("'" + correct + "'")) o.classList.add('correct');
+    });
+  }
+  document.getElementById(parentId + '-expl').classList.add('show');
+}
+
+/* ================= SIMULATOR ================= */
+const SLICES = 8;
+const THREADS = ['T1', 'T2', 'T3', 'T4'];
+const COLORS = ['#f87171', '#60a5fa', '#34d399', '#fbbf24'];
+let simMode = 'single', simTimer = null, tick = 0, progress = [0, 0, 0, 0];
+
+function setMode(m) {
+  if (simTimer) stopSim();
+  simMode = m;
+  document.getElementById('mode-single').classList.toggle('active', m === 'single');
+  document.getElementById('mode-multi').classList.toggle('active', m === 'multi');
+  document.getElementById('m-mode').textContent = m === 'single' ? 'Single' : '4 Cores';
+  resetSim();
+}
+
+function buildCores() {
+  const area = document.getElementById('cores-area');
+  area.innerHTML = '';
+  const coreCount = simMode === 'single' ? 1 : 4;
+  for (let i = 0; i < coreCount; i++) {
+    const lbl = document.createElement('div');
+    lbl.className = 'core-label';
+    lbl.textContent = simMode === 'single' ? 'Core — sab threads share karte hain' : 'Core ' + (i + 1);
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    for (let s = 0; s < SLICES; s++) {
+      const seg = document.createElement('div');
+      seg.className = 'seg-b';
+      seg.dataset.core = i;
+      seg.dataset.slot = s;
+      lane.appendChild(seg);
+    }
+    area.appendChild(lbl);
+    area.appendChild(lane);
+  }
+  const st = document.getElementById('t-status');
+  st.innerHTML = '';
+  THREADS.forEach((t, i) => {
+    const d = document.createElement('div');
+    d.className = 'tstat';
+    d.id = 'stat' + i;
+    d.innerHTML = '<span class="tdot" style="background:' + COLORS[i] + '"></span>' + t + ' — 0/' + SLICES;
+    st.appendChild(d);
+  });
+}
+
+function resetSim() {
+  tick = 0; progress = [0, 0, 0, 0];
+  buildCores();
+  document.getElementById('m-ticks').textContent = '0';
+  document.getElementById('m-done').textContent = '0/4';
+  const note = document.getElementById('sim-note');
+  note.style.display = 'none';
+  note.innerHTML = '';
+}
+
+function toggleSim() {
+  if (simTimer) { stopSim(); return; }
+  resetSim();
+  const btn = document.getElementById('sim-run');
+  btn.textContent = '■ Stop';
+  btn.classList.add('running');
+  simTimer = setInterval(simStep, 150);
+}
+
+function stopSim() {
+  clearInterval(simTimer);
+  simTimer = null;
+  const btn = document.getElementById('sim-run');
+  btn.textContent = '▶ Run';
+  btn.classList.remove('running');
+}
+
+function simStep() {
+  if (progress.every(p => p >= SLICES)) { stopSim(); return; }
+
+  if (simMode === 'single') {
+    let idx = -1;
+    for (let k = 0; k < 4; k++) {
+      const t = (tick + k) % 4;
+      if (progress[t] < SLICES) { idx = t; break; }
+    }
+    if (idx === -1) { stopSim(); return; }
+    const seg = document.querySelector('[data-core="0"][data-slot="' + progress[idx] + '"]');
+    seg.style.background = COLORS[idx];
+    progress[idx]++;
+  } else {
+    for (let i = 0; i < 4; i++) {
+      if (progress[i] < SLICES) {
+        const seg = document.querySelector('[data-core="' + i + '"][data-slot="' + progress[i] + '"]');
+        seg.style.background = COLORS[i];
+        progress[i]++;
+      }
+    }
+  }
+  tick++;
+  document.getElementById('m-ticks').textContent = tick;
+  const doneCount = progress.filter(p => p >= SLICES).length;
+  document.getElementById('m-done').textContent = doneCount + '/4';
+
+  THREADS.forEach((t, i) => {
+    const el = document.getElementById('stat' + i);
+    el.innerHTML = '<span class="tdot" style="background:' + COLORS[i] + '"></span>' + t + ' — ' + progress[i] + '/' + SLICES;
+    el.classList.toggle('done', progress[i] >= SLICES);
+  });
+
+  if (doneCount === 4) {
+    stopSim();
+    const note = document.getElementById('sim-note');
+    if (simMode === 'single') {
+      note.innerHTML = '<b>' + tick + ' ticks</b> lage! Ek core pe saare threads time-slicing se interleaved chale — colors dekho, ek ke baad ek. Yehi hai <b>illusion of concurrency</b>.';
+    } else {
+      note.innerHTML = '<b>Sirf ' + tick + ' ticks!</b> Har thread apne apne core pe <b>truly parallel</b> chala — JVM ne threads ko cores pe distribute kar diya. Yehi hai <b>true parallel execution</b>.';
+    }
+    note.style.display = 'block';
+  }
+}
+setMode('single');
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'Multithreading ki definition kya hai?', a: 'Concurrent execution of 2 or more threads to <b>maximize CPU utilization</b>' },
+  { q: 'Java ki multithreading capabilities kis package ka part hain?', a: '<b>java.lang</b> — Thread class aur Runnable interface isi mein hain' },
+  { q: 'Single core environment mein threads ko kaun manage karta hai?', a: '<b>JVM aur OS</b> — dono milke threads ke beech switch karte hain' },
+  { q: 'Single core pe "concurrency" asli mein hoti hai?', a: 'Nahi — ye sirf <b>illusion of concurrency</b> hai. Threads single core ko share karte hain, <b>time slicing</b> se' },
+  { q: 'Multi-core environment mein JVM kya karta hai?', a: 'Threads ko <b>multiple cores pe distribute</b> karta hai → <b>true parallel execution</b>' },
+  { q: 'Thread kya hai? (2 definitions)', a: '1) A <b>lightweight process</b> &nbsp; 2) The <b>smallest unit of processing</b>' },
+  { q: 'Java program start hote hi kaunsa thread immediately run hota hai?', a: '<b>main thread</b> — jo main() method execute karne ke liye responsible hota hai' },
+  { q: 'Thread.currentThread().getName() simple program mein kya dega?', a: '<b>main</b> — kyunki main() ko main thread hi chala raha hota hai' },
+  { q: 'Concurrency vs Parallelism?', a: 'Concurrency = <b>interleaved</b> execution (ek core, switching). Parallelism = <b>sach mein simultaneously</b> (multiple cores)' },
+  { q: 'Hello World program mein kitne threads hote hain?', a: '<b>Ek</b> — sirf <b>main thread</b>. Abhi tak humne multithreading use nahi ki thi!' }
+];
+let fcIdx = 0;
+
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'Multithreading ka main goal kya hai?',
+    opts: ['Memory bachana', 'CPU utilization maximize karna', 'Network fast karna', 'Code chhota karna'],
+    ans: 1,
+    ex: 'Multithreading = concurrent execution of 2+ threads to <b>maximize CPU utilization</b>.'
+  },
+  {
+    q: 'Java ki multithreading capabilities kis package ka part hain?',
+    opts: ['java.util', 'java.io', 'java.lang', 'java.net'],
+    ans: 2,
+    ex: '<b>java.lang</b> — Thread class aur Runnable interface isi package mein hain, isliye use karna easy hai.'
+  },
+  {
+    q: 'Single core environment mein threads ke beech switching kaun karta hai?',
+    opts: ['Sirf OS', 'Sirf JVM', 'JVM aur OS dono', 'Compiler'],
+    ans: 2,
+    ex: 'Video mein bataya — single core pe <b>JVM aur OS</b> dono milke manage karte hain.'
+  },
+  {
+    q: 'Time slicing kis liye use hota hai?',
+    opts: ['Memory ko slices mein baantne ke liye', 'Single core pe threads ke beech time baantne ke liye', 'File ko parts mein save karne ke liye', 'Network packets baantne ke liye'],
+    ans: 1,
+    ex: 'Threads single core ko share karte hain — time slicing se har thread ko thoda time milta hai (illusion of concurrency).'
+  },
+  {
+    q: 'Multi-core environment mein JVM kya kar sakta hai?',
+    opts: ['Sirf ek core use kar sakta hai', 'Threads ko multiple cores pe distribute kar sakta hai', 'Cores ko band kar sakta hai', 'Threads ko merge kar sakta hai'],
+    ans: 1,
+    ex: 'JVM threads ko <b>multiple cores pe distribute</b> karta hai → <b>true parallel execution</b>.'
+  },
+  {
+    q: '"Thread is a ______ process" — blank mein kya aayega?',
+    opts: ['Heavy', 'Lightweight', 'Independent', 'Virtual'],
+    ans: 1,
+    ex: 'Thread is a <b>lightweight</b> process — smallest unit of processing.'
+  },
+  {
+    q: 'main thread responsible hota hai kis cheez ke liye?',
+    opts: ['Garbage collection ke liye', 'main() method execute karne ke liye', 'Network calls ke liye', 'UI render karne ke liye'],
+    ans: 1,
+    ex: 'Java program start hote hi jo thread immediately run hota hai (main thread), wahi <b>main() method</b> execute karta hai.'
+  },
+  {
+    q: 'Simple program mein <code class="inline">Thread.currentThread().getName()</code> kya print karega?',
+    opts: ['Thread-0', 'main', 'current', 'NullPointerException'],
+    ans: 1,
+    ex: 'Output <b>main</b> aata hai — video mein proof kiya tha isi code se.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Ekdum solid — video clear ho gaya. 🎯';
+    else if (score >= 6) msg = 'Badhiya! Thode se points dobara revise kar lo.';
+    else msg = 'Theek hai — notes + flashcards dobara dekho, phir try karo!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>

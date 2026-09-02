@@ -1,0 +1,278 @@
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Essential Thread Methods</h1>
+      <div class="src">Engineering Digest • Java Multithreading • Video 6 • Revision</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0%</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="s1" data-checkpoint="s1">
+    <div class="sec-head"><span class="sec-num">01</span><h2>start() aur run() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li><code class="inline">t1.start()</code> — JVM ko batata hai "naya thread banao" — aur us thread mein run() execute hota hai</li>
+        <li><code class="inline">run()</code> — <span class="hl">overridden method</span> — jo kaam doosre thread mein karana hai wo yahan likhte hain</li>
+        <li><code class="inline">new Thread()</code> direct banaya toh <span class="hl-p">default run() kuch nahi karta</span> — constructor mein Runnable ya naam dena hota hai</li>
+      </ul>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s1">✓ Section done</button></div>
+  </section>
+
+  <section id="s2" data-checkpoint="s2">
+    <div class="sec-head"><span class="sec-num">02</span><h2>sleep() aur join() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>Thread.sleep(ms)</h3>
+      <ul class="clean">
+        <li>Jo thread is code ko chala raha hai, usko utne <span class="hl">milliseconds ke liye pause</span> karta hai</li>
+        <li><code class="inline">InterruptedException</code> throw karta hai — <b>try-catch compulsory</b></li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>t1.join()</h3>
+      <ul class="clean">
+        <li>Jis thread ne call kiya (caller), wo <span class="hl">t1 ke khatam hone ka wait</span> karega</li>
+        <li>Video ka demo: run() mein 5 sec ka sleep tha, main mein join() — <b>Hello 5 second baad print hua</b>, kyunki main ruka tha t1 ke liye</li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runJoin(this)">▶ Run</button></div>
+        <pre><span class="cm">// run() mein: Thread.sleep(5000)</span>
+<span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+    <span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>();
+    t1.start();
+    t1.join();                          <span class="cm">// main ruk gaya t1 ke liye</span>
+    System.out.println(<span class="st">"Hello"</span>);   <span class="cm">// ye 5 sec BAAD print hoga</span>
+}</pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline sys">(5 second wait...)</div>
+          <div class="cline">Hello</div>
+        </div>
+      </div>
+      <p class="hinglish">join() ke bina Hello turant print hota — main thread rukta nahi. join() lagate hi main t1 ka intezaar karta hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s2">✓ Section done</button></div>
+  </section>
+
+  <section id="s3" data-checkpoint="s3">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Thread Naming <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Default naam: <span class="hl">Thread-0, Thread-1, ...</span> (JVM khud deta hai)</li>
+        <li>Custom naam doosre tarike:
+          <ul class="clean">
+            <li>Apni class mein <span class="hl">constructor banao → super(name) call karo</span> (Thread ka constructor)</li>
+            <li>Ya <code class="inline">new Thread(runnable, "naam")</code> — Thread ke constructor mein naam pass karo</li>
+          </ul>
+        </li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>MyThread.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">MyThread</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="kw">public</span> <span class="ty">MyThread</span>(String name) {
+        <span class="kw">super</span>(name);          <span class="cm">// Thread ka constructor — naam set</span>
+    }
+}
+<span class="cm">// use:</span>
+<span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>(<span class="st">"Vipul"</span>);
+<span class="cm">// output mein "Vipul" aayega, "Thread-0" nahi</span></pre>
+      </div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s3">✓ Section done</button></div>
+  </section>
+
+  <section id="s4" data-checkpoint="s4">
+    <div class="sec-head"><span class="sec-num">04</span><h2>setPriority() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <p>Multiple threads chal rahe hain — CPU kaise decide karega kaun ko zyada time do? Hum <span class="hl">khud priority set</span> kar sakte hain:</p>
+      <div class="prio-scale">
+        <div class="prio-box p-min"><div class="pv">1</div><div class="pn">Thread.MIN_PRIORITY</div></div>
+        <div class="prio-box p-norm"><div class="pv">5</div><div class="pn">Thread.NORM_PRIORITY (default)</div></div>
+        <div class="prio-box p-max"><div class="pv">10</div><div class="pn">Thread.MAX_PRIORITY</div></div>
+      </div>
+      <ul class="clean">
+        <li><code class="inline">t1.setPriority(Thread.MIN_PRIORITY)</code> — static constants use hote hain</li>
+        <li>Video ka demo: 3 threads (LOW, MEDIUM, HIGH priority) — <b>HIGH wala mostly pehle khatam hua</b></li>
+        <li><span class="hl" style="color:var(--warn)">DHYAAN:</span> Ye <span class="hl">strict rule NAHI — sirf HINT hai</span> JVM aur OS scheduler ko</li>
+        <li>Actual behavior depend karta hai: code kaisa hai, kitne cores hain, etc.</li>
+        <li>Priority <span class="hl-p">single core pe zyada noticeable</span> hoti hai — multi-core pe toh parallel execution ho sakta hai</li>
+      </ul>
+      <p class="hinglish">Jaise priority video 1 mein padhi thi — high priority ko zyada time slice. Bas wahi cheez yahan hum khud set kar rahe hain.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s4">✓ Section done</button></div>
+  </section>
+
+  <section id="s5" data-checkpoint="s5">
+    <div class="sec-head"><span class="sec-num">05</span><h2>interrupt() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Meaning: <span class="hl">"jo kar rahe ho wahin ruk jao"</span> — agar thread sleep/wait mein hai toh use utha do</li>
+        <li>Agar thread <span class="hl-p">sleep() mein hoga</span> aur interrupt() call hua → <span class="hl">InterruptedException throw</span> hota hai</li>
+        <li>Video ka demo: run() mein sleep(1000) tha + try-catch. main() ne <code class="inline">t1.interrupt()</code> kiya → <b>sleep interrupted</b> exception aaya, aur sleep ke baad wali line print hi nahi hui</li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runInterrupt(this)">▶ Run</button></div>
+        <pre><span class="cm">// run() mein:</span>
+<span class="kw">try</span> {
+    Thread.sleep(1000);                 <span class="cm">// 1 sec sota hai</span>
+    System.out.println(<span class="st">"Thread is running"</span>); <span class="cm">// ye print NAHI hoga</span>
+} <span class="kw">catch</span> (InterruptedException e) {
+    System.out.println(<span class="st">"Thread interrupted"</span>);
+}
+
+<span class="cm">// main() mein:</span>
+t1.start();
+t1.interrupt();  <span class="cm">// main ne t1 ko utha diya!</span></pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">Thread interrupted</div>
+          <div class="cline err">java.lang.InterruptedException: sleep interrupted</div>
+        </div>
+      </div>
+      <p class="hinglish">Interrupt = "Bhai uth jao!" — sote hue thread ko jhataka. Isi liye sleep() interrupted exception throw karta hai.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s5">✓ Section done</button></div>
+  </section>
+
+  <section id="s6" data-checkpoint="s6">
+    <div class="sec-head"><span class="sec-num">06</span><h2>yield() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <ul class="clean">
+        <li>Matlab: <span class="hl">"main apna CPU use yield karne ko ready hun — doosre threads ko bhi chance do"</span></li>
+        <li>Official: <i>"A hint to the scheduler that the current thread is willing to yield its current use of a processor. The scheduler is <b>free to ignore this hint</b>."</i></li>
+        <li>Bilkul <span class="hl-p">priority jaisa — ye bhi sirf HINT hai</span>, guarantee nahi</li>
+        <li>Video ka demo: 2 threads bina yield ke — ek thread apni saari iterations kar leta tha phir doosra. yield() lagane se dono ko <b>alternate chance</b> milne laga (t1, t2, t1, t2...)</li>
+      </ul>
+      <div class="code">
+        <div class="code-head"><span>run() ke andar</span></div>
+        <pre><span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) {
+    System.out.println(Thread.currentThread().getName() + <span class="st">" is running"</span>);
+    Thread.yield();   <span class="cm">// har iteration ke baad: doosron ko chance do</span>
+}</pre>
+      </div>
+      <p class="hinglish">Pehle: t1 t1 t1 t1 t1 t2 t2 t2 t2 t2 (ek ekata). Yield ke baad: t1 t2 t1 t2 t1 t2... (dono ko chance). Par guarantee nahi — hint hai!</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s6">✓ Section done</button></div>
+  </section>
+
+  <section id="s7" data-checkpoint="s7">
+    <div class="sec-head"><span class="sec-num">07</span><h2>User vs Daemon Threads + setDaemon() <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <h3>User Threads</h3>
+      <ul class="clean">
+        <li>Wo threads jo <span class="hl">humara actual kaam (business logic)</span> karte hain — jo hum khud create karte hain</li>
+        <li><b>JVM user threads ka WAIT karta hai</b> — sab user threads khatam hone tak JVM band nahi hota</li>
+        <li>Example: 1 crore baar Hello World print karna hai — JVM wait karega, poora hone dega</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Daemon Threads</h3>
+      <ul class="clean">
+        <li><span class="hl">Background threads</span> — jaise Java ka <span class="hl-p">Garbage Collector</span></li>
+        <li><span class="hl" style="color:var(--bad)">JVM daemon threads ka WAIT NAHI karta!</span></li>
+        <li>Agar saare user threads khatam ho gaye → <b>JVM daemon threads ko maar kar band ho jata hai</b></li>
+        <li>Daemon banane ke liye: <code class="inline">t1.setDaemon(true)</code> — <b>start() se PEHLE</b> call karna hota hai</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>Video ka demo — samajhne wala</h3>
+      <p><b>Case 1:</b> MyThread daemon banaya (infinite loop, Hello World print karta raha). main() khatam hua → JVM ne daemon ko <b>mar diya</b>. Kuch Hello Worlds print hue, phir sab band.</p>
+      <p style="margin-top:8px;"><b>Case 2:</b> Ek daemon (MyThread) + ek <span class="hl">user thread (t1)</span> dono chale. main() khatam → lekin t1 user thread hai, toh <b>JVM t1 ka wait kiya</b> — aur daemon bhi saath chalta raha.</p>
+      <div class="code">
+        <div class="code-head"><span>Main.java</span><button class="run-btn" onclick="runDaemon(this)">▶ Run</button></div>
+        <pre><span class="ty">MyThread</span> daemon = <span class="kw">new</span> <span class="ty">MyThread</span>();  <span class="cm">// infinite loop mein Hello World</span>
+daemon.setDaemon(<span class="kw">true</span>);
+daemon.start();
+
+<span class="cm">// main() ka aakhri statement:</span>
+System.out.println(<span class="st">"Main done"</span>);
+<span class="cm">// main khatam → user threads koi nahi → JVM band → daemon bhi band!</span></pre>
+        <div class="console">
+          <div class="console-label">Output</div>
+          <div class="cline">Hello World</div>
+          <div class="cline">Hello World</div>
+          <div class="cline">Main done</div>
+          <div class="cline">Hello World</div>
+          <div class="cline sys">(JVM band — daemon terminate ho gaya)</div>
+        </div>
+      </div>
+      <p class="hinglish">Daemon = "background mein faltu kaam" — JVM bolta hai "user threads khatam? Toh main band, daemon ko maro." User thread zinda hai toh JVM zinda.</p>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s7">✓ Section done</button></div>
+  </section>
+
+  <section id="s8" data-checkpoint="s8">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Summary Table <span class="badge video">FROM VIDEO</span></h2></div>
+
+    <div class="card">
+      <table>
+        <tr><th>Method</th><th>Kya karta hai</th></tr>
+        <tr><td>start()</td><td>Naya thread banata hai, run() us thread mein chalta hai</td></tr>
+        <tr><td>run()</td><td>Overridden — thread ka kaam isi mein likhte hain</td></tr>
+        <tr><td>sleep(ms)</td><td>Current thread ko pause karta hai (InterruptedException handle karo)</td></tr>
+        <tr><td>join()</td><td>Caller thread rukta hai is thread ke khatam hone tak</td></tr>
+        <tr><td>setPriority()</td><td>1 (MIN), 5 (NORM), 10 (MAX) — <b>sirf hint</b>, guarantee nahi</td></tr>
+        <tr><td>getName()/naming</td><td>Default Thread-0... ya constructor se custom naam (super(name))</td></tr>
+        <tr><td>interrupt()</td><td>Sote/wait karte thread ko uthata hai → InterruptedException</td></tr>
+        <tr><td>yield()</td><td>Hint: "doosre threads ko chance do" — scheduler ignore kar sakta hai</td></tr>
+        <tr><td>setDaemon(true)</td><td>Thread background daemon ban jata hai — JVM iska wait nahi karta</td></tr>
+      </table>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s8">✓ Section done</button></div>
+  </section>
+
+  <section id="s9" data-checkpoint="s9">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Flashcards — Rapid Revision</h2></div>
+    <p class="sec-sub">Card pe click karke flip karo. Pehle khud answer socho!</p>
+    <div class="fc-stage">
+      <div class="fc-card" id="fc" onclick="this.classList.toggle('flip')">
+        <div class="fc-face fc-front">
+          <div class="fc-q" id="fc-q"></div>
+          <div class="fc-hint">click to flip</div>
+        </div>
+        <div class="fc-face fc-back">
+          <div class="fc-a" id="fc-a"></div>
+          <div class="fc-hint">click to flip back</div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcPrev()">← Prev</button>
+      <div class="fc-count" id="fc-count">1/12</div>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcNext()">Next →</button>
+      <button class="opt" style="width:auto;padding:8px 18px;border-radius:10px;cursor:pointer;font-weight:700;" onclick="fcShuffle()">Shuffle</button>
+    </div>
+    <div class="done-row" style="margin-top:16px;"><button class="done-btn" data-cp="s9">✓ Section done</button></div>
+  </section>
+
+  <section id="s10" data-checkpoint="s10">
+    <div class="sec-head"><span class="sec-num">10</span><h2>Final Quiz</h2></div>
+    <p class="sec-sub">10 questions — saare methods cover.</p>
+    <div id="quiz"></div>
+    <div class="quiz-score" id="quiz-score">
+      <div class="big" id="score-big"></div>
+      <div class="msg" id="score-msg"></div>
+    </div>
+    <div class="done-row"><button class="done-btn" data-cp="s10">✓ Section done</button></div>
+  </section>
+
+  <div class="footer-note">
+    Source: Engineering Digest — Java Multithreading playlist (Video: "Master Java Threads: Essential Methods to Elevate Your Coding!") • Progress browser mein save hota hai •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>

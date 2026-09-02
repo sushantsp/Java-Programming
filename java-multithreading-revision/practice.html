@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice Lab — Java Multithreading</title>
+<style>
+  :root {
+    --bg: #0b0f17; --bg2: #111827; --card: #151c2c; --card2: #1a2338;
+    --border: #263148; --text: #e6edf7; --muted: #93a1b8;
+    --accent: #6c8cff; --accent2: #2dd4bf; --good: #34d399;
+    --bad: #f87171; --warn: #fbbf24; --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 20px 80px; }
+
+  .topbar { position: sticky; top: 0; z-index: 50; background: rgba(11,15,23,.85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); padding: 12px 0; }
+  .topbar-inner { max-width: 880px; margin: 0 auto; padding: 0 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .topbar h1 { font-size: 15px; font-weight: 700; }
+  .topbar .src { font-size: 11px; color: var(--muted); }
+  .back-link { font-size: 12px; color: var(--accent); text-decoration: none; font-weight: 700; border: 1px solid var(--border); background: var(--card); padding: 5px 12px; border-radius: 99px; }
+  .back-link:hover { border-color: var(--accent); }
+  .progress-track { flex: 1; min-width: 120px; height: 8px; background: var(--bg2); border-radius: 99px; overflow: hidden; border: 1px solid var(--border); }
+  .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width .4s; border-radius: 99px; }
+  .progress-label { font-size: 11px; color: var(--muted); min-width: 46px; text-align: right; }
+
+  .hero { margin-top: 40px; text-align: center; }
+  .hero h2 { font-size: 26px; font-weight: 800; background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .hero .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
+
+  .guidelines { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 16px 20px; margin: 28px 0 8px; }
+  .guidelines h3 { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: var(--accent); margin-bottom: 8px; }
+  .guidelines li { color: #c7d2e4; font-size: 13.5px; margin-left: 20px; padding: 3px 0; }
+
+  .ex {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 20px 22px; margin: 22px 0; scroll-margin-top: 80px;
+  }
+  .ex.done { border-color: rgba(52,211,153,.45); }
+  .ex-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ex-num { font-size: 12px; font-weight: 800; color: var(--accent); border: 1px solid var(--border); background: var(--card2); border-radius: 8px; padding: 3px 10px; }
+  .ex-title { font-size: 17px; font-weight: 800; flex: 1; }
+  .diff { font-size: 10.5px; font-weight: 800; letter-spacing: .8px; padding: 3px 10px; border-radius: 99px; border: 1px solid; }
+  .d-easy { color: var(--good); border-color: var(--good); background: rgba(52,211,153,.08); }
+  .d-med { color: var(--warn); border-color: var(--warn); background: rgba(251,191,36,.08); }
+  .d-hard { color: var(--bad); border-color: var(--bad); background: rgba(248,113,113,.08); }
+  .ex p { color: #c7d2e4; font-size: 14.5px; }
+  .ex .task { background: var(--bg2); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 10px 10px 0; margin: 12px 0; font-size: 14.5px; color: #c7d2e4; }
+  .ex .task b { color: var(--text); }
+  .ex .task .mono { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 13px; color: var(--accent2); background: #0d1424; border: 1px solid var(--border); padding: 0 6px; border-radius: 5px; }
+  .tag-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 2px; }
+  .tag { font-size: 11px; font-weight: 700; color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 2px 10px; background: var(--bg2); }
+  .tag a { color: var(--accent2); text-decoration: none; }
+
+  .toggle-btn { cursor: pointer; font-size: 12.5px; font-weight: 700; background: var(--card2); color: var(--accent); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; margin: 10px 8px 0 0; transition: all .2s; }
+  .toggle-btn:hover { border-color: var(--accent); }
+  .toggle-btn.sol { color: var(--warn); }
+  .toggle-btn.sol:hover { border-color: var(--warn); }
+
+  .panel { display: none; margin-top: 12px; }
+  .panel.show { display: block; }
+  .panel-hint { background: rgba(108,140,255,.07); border: 1px solid rgba(108,140,255,.3); border-radius: 10px; padding: 12px 16px; font-size: 13.5px; color: #b9c7e0; }
+
+  .code { background: #0a0f1c; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 12px 0; }
+  .code-head { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; background: #0d1424; border-bottom: 1px solid var(--border); font-size: 11.5px; color: var(--muted); font-family: ui-monospace, Menlo, monospace; }
+  .code pre { padding: 14px 16px; overflow-x: auto; font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.75; color: #d5e2f5; }
+  .kw { color: #c792ea; } .ty { color: #ffcb6b; } .st { color: #c3e88d; } .cm { color: #5c6a84; font-style: italic; } .mt { color: #82aaff; } .an { color: #f78c6c; }
+
+  .expected { background: #050810; border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; margin: 12px 0; font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: #a7f3d0; }
+  .expected .elabel { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+
+  .done-btn { cursor: pointer; user-select: none; font-size: 12.5px; font-weight: 600; background: var(--card2); color: var(--muted); border: 1px solid var(--border); border-radius: 99px; padding: 6px 16px; margin-top: 12px; transition: all .2s; }
+  .done-btn:hover { border-color: var(--good); color: var(--text); }
+  .done-btn.on { background: rgba(52,211,153,.15); border-color: var(--good); color: var(--good); }
+
+  .footer-note { margin-top: 50px; text-align: center; color: var(--muted); font-size: 12px; }
+  .reset-link { color: var(--bad); cursor: pointer; text-decoration: underline; background: none; border: none; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <a class="back-link" href="index.html">← Index</a>
+    <div>
+      <h1>Practice Lab</h1>
+      <div class="src">Hands-on coding • Concepts from Videos 1–7</div>
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="pfill"></div></div>
+    <div class="progress-label" id="plabel">0/8</div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <h2>Practice Lab</h2>
+    <div class="sub">8 exercises, ordered by difficulty. Write the code yourself — reading alone won't build recall.</div>
+  </div>
+
+  <div class="guidelines">
+    <h3>How to use this lab</h3>
+    <li>Type every solution yourself in your IDE — no copy-paste from the solution panel</li>
+    <li>Attempt each exercise using the hint first; reveal the solution only after a genuine try</li>
+    <li>Run each exercise 2–3 times — multithreaded output often differs between runs, and observing that variance is part of the learning</li>
+    <li>Stuck for more than 15 minutes? Open the linked revision page for the relevant video</li>
+  </div>
+  <!-- ================= EX 1 ================= -->
+  <div class="ex" id="ex1">
+    <div class="ex-head">
+      <span class="ex-num">EX 1</span>
+      <span class="ex-title">Your First Threads — Hello &amp; World</span>
+      <span class="diff d-easy">EASY</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 3: <a href="03-creating-threads.html">Creating Threads</a></span></div>
+    <div class="task">
+      <b>Task:</b> Create a <span class="mono">MyThread</span> class extending <span class="mono">Thread</span>. In <span class="mono">run()</span>, print <b>"World"</b> 5 times in a loop. In <span class="mono">main()</span>, print <b>"Hello"</b> 5 times. Start the thread and observe — the output should be interleaved.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output (random mix — different on every run)</div>
+      Hello World Hello Hello World World World Hello World Hello
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex1-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex1-sol')">Show solution</button>
+    <div class="panel" id="ex1-hint">
+      <div class="panel-hint">Extend Thread, override run() with a loop from 0 to 4 printing "World". In main(): create the object, call start() <b>before</b> the Hello loop, then loop 0 to 4 printing "Hello".</div>
+    </div>
+    <div class="panel" id="ex1-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex1.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">MyThread</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) System.out.println(<span class="st">"World"</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Ex1</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        <span class="ty">MyThread</span> t1 = <span class="kw">new</span> <span class="ty">MyThread</span>();
+        t1.start();
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) System.out.println(<span class="st">"Hello"</span>);
+    }
+}</pre>
+      </div>
+    </div>
+    <button class="done-btn" data-ex="ex1">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 2 ================= -->
+  <div class="ex" id="ex2">
+    <div class="ex-head">
+      <span class="ex-num">EX 2</span>
+      <span class="ex-title">The Runnable Way — Plus a Lambda</span>
+      <span class="diff d-easy">EASY</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 3: <a href="03-creating-threads.html">Creating Threads</a></span><span class="tag">Video 5: <a href="05-thread-vs-runnable.html">Thread vs Runnable</a></span></div>
+    <div class="task">
+      <b>Task:</b> Produce the same result as EX 1, but this time implement the <span class="mono">Runnable</span> interface. Create the thread via <span class="mono">new Thread(runnableObj).start()</span>. Then repeat it once more using a lambda expression: <span class="mono">new Thread(() -&gt; {...}).start()</span>
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output</div>
+      World Hello World Hello ... (mixed, same interleaving as EX 1)
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex2-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex2-sol')">Show solution</button>
+    <div class="panel" id="ex2-hint">
+      <div class="panel-hint">Runnable has no start() method — that's why you must wrap the Runnable in a Thread object and pass it to the constructor. Since Runnable is a functional interface, <span style="font-family:monospace">() -> {}</span> works directly as the lambda form.</div>
+    </div>
+    <div class="panel" id="ex2-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex2.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">World</span> <span class="kw">implements</span> <span class="ty">Runnable</span> {
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) System.out.println(<span class="st">"World"</span>);
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Ex2</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        <span class="ty">World</span> world = <span class="kw">new</span> <span class="ty">World</span>();
+        <span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(world);
+        t1.start();
+
+        <span class="cm">// Bonus — lambda form:</span>
+        <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) System.out.println(<span class="st">"Lambda"</span>);
+        }).start();
+
+        <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 5; i++) System.out.println(<span class="st">"Hello"</span>);
+    }
+}</pre>
+      </div>
+    </div>
+    <button class="done-btn" data-ex="ex2">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 3 ================= -->
+  <div class="ex" id="ex3">
+    <div class="ex-head">
+      <span class="ex-num">EX 3</span>
+      <span class="ex-title">Lifecycle Observer — A getState() Tour</span>
+      <span class="diff d-easy">EASY</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 4: <a href="04-thread-lifecycle.html">Thread Lifecycle</a></span></div>
+    <div class="task">
+      <b>Task:</b> Create a thread whose <span class="mono">run()</span> sleeps for 2 seconds. Print its <span class="mono">getState()</span> at <b>four points</b>: (1) right after creating the object, (2) immediately after <span class="mono">start()</span>, (3) after a 1-second pause in main via <span class="mono">Thread.sleep(1000)</span>, and (4) after <span class="mono">join()</span> returns.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output</div>
+      NEW → RUNNABLE → TIMED_WAITING → TERMINATED
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex3-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex3-sol')">Show solution</button>
+    <div class="panel" id="ex3-hint">
+      <div class="panel-hint">RUNNING will never appear — it doesn't exist in Java's Thread.State enum (RUNNABLE covers both "ready" and "running"). While a thread is inside sleep(), its state is TIMED_WAITING. After join() returns, the thread has finished, so the state is TERMINATED.</div>
+    </div>
+    <div class="panel" id="ex3-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex3.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Ex3</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">try</span> { Thread.sleep(2000); } <span class="kw">catch</span> (InterruptedException e) { }
+        });
+
+        System.out.println(<span class="st">"1: "</span> + t1.getState());   <span class="cm">// NEW</span>
+        t1.start();
+        System.out.println(<span class="st">"2: "</span> + t1.getState());   <span class="cm">// RUNNABLE</span>
+        Thread.sleep(1000);                    <span class="cm">// t1 is mid-sleep right now</span>
+        System.out.println(<span class="st">"3: "</span> + t1.getState());   <span class="cm">// TIMED_WAITING</span>
+        t1.join();                             <span class="cm">// wait for it to finish</span>
+        System.out.println(<span class="st">"4: "</span> + t1.getState());   <span class="cm">// TERMINATED</span>
+    }
+}</pre>
+      </div>
+    </div>
+    <button class="done-btn" data-ex="ex3">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 4 ================= -->
+  <div class="ex" id="ex4">
+    <div class="ex-head">
+      <span class="ex-num">EX 4</span>
+      <span class="ex-title">Ordering with join()</span>
+      <span class="diff d-med">MEDIUM</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 6: <a href="06-essential-thread-methods.html">Essential Methods</a></span></div>
+    <div class="task">
+      <b>Task:</b> A worker thread performs a 3-second task (<span class="mono">sleep(3000)</span>, then prints "Work done!"). The main thread must print <b>"Result: task complete" only after the worker finishes</b>. First run it without join() to see the wrong ordering, then add join() to fix it.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output (with join)</div>
+      Main started<br>(3 second pause...) Work done!<br>Result: task complete
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex4-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex4-sol')">Show solution</button>
+    <div class="panel" id="ex4-hint">
+      <div class="panel-hint">Call <span style="font-family:monospace">worker.join()</span> <b>before</b> printing the result. join() throws InterruptedException — declare it on main() or wrap in try-catch. Without join(), "Result" prints immediately and "Work done!" arrives 3 seconds later.</div>
+    </div>
+    <div class="panel" id="ex4-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex4.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Ex4</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        System.out.println(<span class="st">"Main started"</span>);
+
+        <span class="ty">Thread</span> worker = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">try</span> {
+                Thread.sleep(3000);            <span class="cm">// simulated heavy task</span>
+                System.out.println(<span class="st">"Work done!"</span>);
+            } <span class="kw">catch</span> (InterruptedException e) { }
+        });
+        worker.start();
+        worker.join();                          <span class="cm">// remove this line to see the race</span>
+
+        System.out.println(<span class="st">"Result: task complete"</span>);
+    }
+}</pre>
+      </div>
+    </div>
+    <button class="done-btn" data-ex="ex4">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 5 ================= -->
+  <div class="ex" id="ex5">
+    <div class="ex-head">
+      <span class="ex-num">EX 5</span>
+      <span class="ex-title">Interrupting a Sleeper</span>
+      <span class="diff d-med">MEDIUM</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 6: <a href="06-essential-thread-methods.html">Essential Methods</a></span></div>
+    <div class="task">
+      <b>Task:</b> A worker thread sleeps for 10 seconds. The main thread calls <span class="mono">interrupt()</span> after 1 second. In the worker's catch block, print "Interrupted! Slept for: X ms" — measure X using <span class="mono">System.currentTimeMillis()</span>.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output</div>
+      Interrupted! Slept for: ~1000 ms<br>(not 10 seconds — the interrupt woke it early)
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex5-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex5-sol')">Show solution</button>
+    <div class="panel" id="ex5-hint">
+      <div class="panel-hint">Capture <span style="font-family:monospace">long start = System.currentTimeMillis()</span> right before sleep(). In the catch block, compute elapsed = current − start. In main(), sleep(1000) before calling interrupt() so the worker actually gets to sleep first.</div>
+    </div>
+    <div class="panel" id="ex5-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex5.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Ex5</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">Thread</span> worker = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">long</span> start = System.currentTimeMillis();
+            <span class="kw">try</span> {
+                Thread.sleep(10000);           <span class="cm">// planned 10s nap</span>
+            } <span class="kw">catch</span> (InterruptedException e) {
+                <span class="kw">long</span> slept = System.currentTimeMillis() - start;
+                System.out.println(<span class="st">"Interrupted! Slept for: "</span> + slept + <span class="st">" ms"</span>);
+            }
+        });
+        worker.start();
+
+        Thread.sleep(1000);                    <span class="cm">// let it settle into sleep</span>
+        worker.interrupt();                    <span class="cm">// wake it up</span>
+    }
+}</pre>
+      </div>
+    </div>
+    <button class="done-btn" data-ex="ex5">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 6 ================= -->
+  <div class="ex" id="ex6">
+    <div class="ex-head">
+      <span class="ex-num">EX 6</span>
+      <span class="ex-title">Daemon Lifecycle</span>
+      <span class="diff d-med">MEDIUM</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 6: <a href="06-essential-thread-methods.html">Essential Methods</a></span></div>
+    <div class="task">
+      <b>Task:</b> Create a daemon thread that prints "monitoring..." every 200ms in an infinite loop. Create a user thread that does 1 second of work (<span class="mono">sleep(1000)</span>, then prints "User work done"). Call <span class="mono">setDaemon(true)</span> <b>before start()</b>. Observe: the moment the user thread finishes, the JVM kills the daemon.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output</div>
+      monitoring... ×4-5<br>User work done<br>(program exits — daemon terminated)
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex6-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex6-sol')">Show solution</button>
+    <div class="panel" id="ex6-hint">
+      <div class="panel-hint">setDaemon(true) must be called <b>before</b> start(), otherwise it throws IllegalThreadStateException. The daemon loop: while(true) { println; sleep(200); } with the InterruptedException handled.</div>
+    </div>
+    <div class="panel" id="ex6-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex6.java</span></div>
+        <pre><span class="kw">public class</span> <span class="ty">Ex6</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) {
+        <span class="ty">Thread</span> monitor = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">while</span> (<span class="kw">true</span>) {
+                System.out.println(<span class="st">"monitoring..."</span>);
+                <span class="kw">try</span> { Thread.sleep(200); } <span class="kw">catch</span> (InterruptedException e) { <span class="kw">return</span>; }
+            }
+        });
+        monitor.setDaemon(<span class="kw">true</span>);           <span class="cm">// set BEFORE start</span>
+        monitor.start();
+
+        <span class="ty">Thread</span> worker = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">try</span> { Thread.sleep(1000); } <span class="kw">catch</span> (InterruptedException e) { }
+            System.out.println(<span class="st">"User work done"</span>);
+        });
+        worker.start();
+        <span class="cm">// main ends + worker ends → JVM exits → daemon is killed</span>
+    }
+}</pre>
+      </div>
+    </div>
+    <button class="done-btn" data-ex="ex6">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 7 ================= -->
+  <div class="ex" id="ex7">
+    <div class="ex-head">
+      <span class="ex-num">EX 7</span>
+      <span class="ex-title">Reproduce and Fix a Race Condition</span>
+      <span class="diff d-hard">HARD</span>
+    </div>
+    <div class="tag-row"><span class="tag">Video 7: <a href="07-synchronization.html">Synchronization</a></span></div>
+    <div class="task">
+      <b>Task:</b> Create a Counter class (int field, an <span class="mono">increment()</span> method doing count++). Launch 2 threads that each increment <b>100,000 times</b> — larger numbers make the race easier to observe. Print the final count after both join(). <b>Run it 5–6 times:</b> sometimes you'll get 200000, often less. Then fix it with <span class="mono">synchronized</span> — after the fix, it must be 200000 on every run.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output (without synchronized — different on every run)</div>
+      Count: 187342<br>Count: 193821<br>Count: 200000 (occasionally lucky)<br><br>=== after adding synchronized ===<br>Count: 200000 (every run)
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex7-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex7-sol')">Show solution</button>
+    <div class="panel" id="ex7-hint">
+      <div class="panel-hint">Pass the <b>same</b> Counter object to both threads (via constructor or a shared variable). Separate objects won't race — there's nothing shared! The fix: mark the method <span style="font-family:monospace">public synchronized void increment()</span>.</div>
+    </div>
+    <div class="panel" id="ex7-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex7.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">Counter</span> {
+    <span class="kw">private int</span> count = 0;
+    <span class="kw">public synchronized void</span> <span class="mt">increment</span>() { count++; }  <span class="cm">// synchronized = the fix</span>
+    <span class="kw">public int</span> <span class="mt">getCount</span>() { <span class="kw">return</span> count; }
+}
+
+<span class="kw">public class</span> <span class="ty">Ex7</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">Counter</span> counter = <span class="kw">new</span> <span class="ty">Counter</span>();      <span class="cm">// ONE shared object</span>
+
+        <span class="ty">Thread</span> t1 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) counter.increment();
+        });
+        <span class="ty">Thread</span> t2 = <span class="kw">new</span> <span class="ty">Thread</span>(() -&gt; {
+            <span class="kw">for</span> (<span class="kw">int</span> i = 0; i &lt; 100000; i++) counter.increment();
+        });
+
+        t1.start(); t2.start();
+        t1.join(); t2.join();
+
+        System.out.println(<span class="st">"Count: "</span> + counter.getCount());
+    }
+}</pre>
+      </div>
+      <div class="panel-hint" style="margin-top:8px;">Experiment deliberately: remove synchronized, run 5–6 times and catch the race in the act. Put it back and confirm stability. This is the reproduce → fix → verify cycle used in real debugging.</div>
+    </div>
+    <button class="done-btn" data-ex="ex7">Mark as solved</button>
+  </div>
+
+  <!-- ================= EX 8 ================= -->
+  <div class="ex" id="ex8">
+    <div class="ex-head">
+      <span class="ex-num">EX 8</span>
+      <span class="ex-title">Challenge: Rocket Launch Sequence</span>
+      <span class="diff d-hard">HARD</span>
+    </div>
+    <div class="tag-row"><span class="tag">Combines everything</span><span class="tag">Videos 3, 4, 6</span></div>
+    <div class="task">
+      <b>Task:</b> Build a launch controller. Create 3 threads named <b>"Engine-1", "Engine-2", "Engine-3"</b> (custom naming via constructor + super(name)). Each engine counts down 3 → 2 → 1, printing "Engine-X: 3" etc., with a 500ms sleep between numbers. The main thread must <b>join() all engines</b> and only then print <b>"LIFTOFF!"</b>. Bonus: assign priorities (one MAX, one MIN) and observe which engine tends to finish first.
+    </div>
+    <div class="expected">
+      <div class="elabel">Expected output (interleaved)</div>
+      Engine-1: 3 | Engine-2: 3 | Engine-3: 3<br>Engine-1: 2 | Engine-3: 2 ...<br>(all reach 1, each prints ready)<br>LIFTOFF!
+    </div>
+    <button class="toggle-btn" onclick="togglePanel(this, 'ex8-hint')">Show hint</button>
+    <button class="toggle-btn sol" onclick="togglePanel(this, 'ex8-sol')">Show solution</button>
+    <div class="panel" id="ex8-hint">
+      <div class="panel-hint">class Engine extends Thread with constructor Engine(String name) { super(name); }. In run(): loop from 3 down to 1, print getName() + count, sleep(500). In main(): create 3 engines, start all, then join all (a for-loop works well), then print LIFTOFF. Without the joins, LIFTOFF prints before the countdowns finish.</div>
+    </div>
+    <div class="panel" id="ex8-sol">
+      <div class="code">
+        <div class="code-head"><span>Ex8.java</span></div>
+        <pre><span class="kw">class</span> <span class="ty">Engine</span> <span class="kw">extends</span> <span class="ty">Thread</span> {
+    <span class="kw">public</span> <span class="ty">Engine</span>(String name) {
+        <span class="kw">super</span>(name);                      <span class="cm">// Thread constructor — sets the name</span>
+    }
+    <span class="an">@Override</span>
+    <span class="kw">public void</span> <span class="mt">run</span>() {
+        <span class="kw">try</span> {
+            <span class="kw">for</span> (<span class="kw">int</span> i = 3; i &gt;= 1; i--) {
+                System.out.println(getName() + <span class="st">": "</span> + i);
+                Thread.sleep(500);
+            }
+            System.out.println(getName() + <span class="st">" ready"</span>);
+        } <span class="kw">catch</span> (InterruptedException e) {
+            System.out.println(getName() + <span class="st">" interrupted!"</span>);
+        }
+    }
+}
+
+<span class="kw">public class</span> <span class="ty">Ex8</span> {
+    <span class="kw">public static void</span> <span class="mt">main</span>(String[] args) <span class="kw">throws</span> InterruptedException {
+        <span class="ty">Engine</span>[] engines = {
+            <span class="kw">new</span> <span class="ty">Engine</span>(<span class="st">"Engine-1"</span>),
+            <span class="kw">new</span> <span class="ty">Engine</span>(<span class="st">"Engine-2"</span>),
+            <span class="kw">new</span> <span class="ty">Engine</span>(<span class="st">"Engine-3"</span>)
+        };
+
+        <span class="cm">// Bonus: priorities (hints, not guarantees)</span>
+        engines[0].setPriority(Thread.MAX_PRIORITY);
+        engines[1].setPriority(Thread.NORM_PRIORITY);
+        engines[2].setPriority(Thread.MIN_PRIORITY);
+
+        <span class="kw">for</span> (<span class="ty">Engine</span> e : engines) e.start();
+        <span class="kw">for</span> (<span class="ty">Engine</span> e : engines) e.join();   <span class="cm">// wait until every engine is ready</span>
+
+        System.out.println(<span class="st">"LIFTOFF!"</span>);
+    }
+}</pre>
+      </div>
+      <div class="panel-hint" style="margin-top:8px;">This exercise combines: extends Thread, custom naming via super(), sleep, join, and priorities. Remove the join loop and watch LIFTOFF print immediately — that's the "JVM waits for user threads" concept in action.</div>
+    </div>
+    <button class="done-btn" data-ex="ex8">Mark as solved</button>
+  </div>
+
+  <div class="footer-note">
+    Practice Lab • Attempt each exercise before revealing the solution •
+    <button class="reset-link" onclick="resetAll()">Reset progress</button>
+  </div>
+</div>
+
+<script>
+const KEY = 'mt-practice-v1';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL = document.querySelectorAll('.ex').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = done + '/' + TOTAL;
+}
+
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const id = btn.dataset.ex;
+  if (state[id]) {
+    btn.classList.add('on');
+    btn.textContent = 'Solved';
+    document.getElementById(id).classList.add('done');
+  }
+  btn.addEventListener('click', () => {
+    state[id] = !state[id];
+    btn.classList.toggle('on', state[id]);
+    btn.textContent = state[id] ? 'Solved' : 'Mark as solved';
+    document.getElementById(id).classList.toggle('done', state[id]);
+    saveState(); updateProgress();
+  });
+});
+
+function togglePanel(btn, id) {
+  const panel = document.getElementById(id);
+  const showing = panel.classList.toggle('show');
+  btn.textContent = btn.classList.contains('sol')
+    ? (showing ? 'Hide solution' : 'Show solution')
+    : (showing ? 'Hide hint' : 'Show hint');
+}
+
+function resetAll() {
+  if (confirm('Reset practice progress?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+</script>
+</body>
+</html>

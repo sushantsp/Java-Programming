@@ -1,0 +1,222 @@
+<script>
+/* ================= PROGRESS ================= */
+const KEY = 'mt-revision-v4';
+let state = JSON.parse(localStorage.getItem(KEY) || '{}');
+function saveState() { localStorage.setItem(KEY, JSON.stringify(state)); }
+
+const TOTAL_CP = document.querySelectorAll('[data-cp]').length;
+function updateProgress() {
+  const done = Object.values(state).filter(Boolean).length;
+  const pct = Math.round(done / TOTAL_CP * 100);
+  document.getElementById('pfill').style.width = pct + '%';
+  document.getElementById('plabel').textContent = pct + '%';
+}
+document.querySelectorAll('.done-btn').forEach(btn => {
+  const cp = btn.dataset.cp;
+  if (state[cp]) { btn.classList.add('on'); btn.textContent = '✓ Done'; }
+  btn.addEventListener('click', () => {
+    state[cp] = !state[cp];
+    btn.classList.toggle('on', state[cp]);
+    btn.textContent = state[cp] ? '✓ Done' : '✓ Section done';
+    saveState(); updateProgress();
+  });
+});
+function resetAll() {
+  if (confirm('Progress reset karni hai?')) {
+    localStorage.removeItem(KEY);
+    location.reload();
+  }
+}
+updateProgress();
+
+/* ================= LIFECYCLE VISUAL ================= */
+const LC_STEPS = [
+  { id: 'lc-new',        label: 'NEW — new MyThread() se object bana. Abhi start() nahi hua, thread kuch nahi kar raha.' },
+  { id: 'lc-runnable',   label: 'RUNNABLE — t1.start() call hua. Thread ready hai, CPU time ka wait kar raha hai. Chala nahi abhi!' },
+  { id: 'lc-running',    label: 'RUNNING — CPU mil gaya, run() ab actually execute ho raha hai. (Java enum mein ye RUNNABLE hi hota hai)' },
+  { id: 'lc-waiting',    label: 'TIMED_WAITING — run() ke andar Thread.sleep(2000) chala. Thread 2 sec ke liye pause. sleep = TIMED_WAITING.' },
+  { id: 'lc-term',       label: 'TERMINATED — run() poora khatam. Thread ki zindagi over. Ab getState() hamesha TERMINATED dega.' }
+];
+let lcStep = -1;
+
+function lcNext() {
+  document.querySelectorAll('.lc-state').forEach(el => el.classList.remove('lc-highlight'));
+  lcStep++;
+  if (lcStep >= LC_STEPS.length) lcStep = 0;
+  const step = LC_STEPS[lcStep];
+  document.getElementById(step.id).classList.add('lc-highlight');
+  document.getElementById('lc-label').textContent = step.label;
+  const btn = document.getElementById('lc-next');
+  btn.textContent = lcStep === LC_STEPS.length - 1 ? '↻ Start again' : 'Next step →';
+}
+function lcReset() {
+  lcStep = -1;
+  document.querySelectorAll('.lc-state').forEach(el => el.classList.remove('lc-highlight'));
+  document.getElementById('lc-label').textContent = '\u200b';
+  document.getElementById('lc-next').textContent = 'Next step →';
+}
+
+/* ================= DEMO RUN ================= */
+function runLifecycle(btn) {
+  const cons = btn.closest('.code').querySelector('.console');
+  cons.style.display = 'block';
+  const lines = cons.querySelectorAll('.cline');
+  lines.forEach(l => l.classList.remove('show'));
+  const delays = [300, 800, 1600, 2600, 5600, 6200];
+  lines.forEach((l, i) => setTimeout(() => l.classList.add('show'), delays[i]));
+  btn.textContent = '↻ Run again';
+}
+
+/* ================= PREDICT ================= */
+const PREDICT_ANSWERS = { predict1: 'A', predict2: 'C' };
+function checkPredict(btn, parentId, chosen) {
+  const parent = document.getElementById(parentId);
+  const correct = PREDICT_ANSWERS[parentId];
+  parent.querySelectorAll('.opt').forEach(o => o.disabled = true);
+  if (chosen === correct) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    parent.querySelectorAll('.opt').forEach(o => {
+      if (o.getAttribute('onclick').includes("'" + correct + "'")) o.classList.add('correct');
+    });
+  }
+  document.getElementById(parentId + '-expl').classList.add('show');
+}
+
+/* ================= FLASHCARDS ================= */
+let CARDS = [
+  { q: 'Thread lifecycle kya hai?', a: 'Thread ke execution ke dauraan aane wali <b>states ka sequence</b> — create → run → terminate' },
+  { q: 'NEW state kab hoti hai?', a: 'Jab thread ka <b>object bana</b> ho par <b>start() call nahi</b> hua ho' },
+  { q: 'RUNNABLE state kab hoti hai?', a: '<b>start()</b> hote hi — thread <b>ready to run</b> hai, CPU time ka wait kar raha hai' },
+  { q: 'RUNNING state kab hoti hai?', a: 'Jab CPU time mil jaye aur thread <b>actually execute</b> ho raha ho' },
+  { q: 'BLOCKED / WAITING state kab hoti hai?', a: 'Thread kisi <b>resource/lock ka wait</b> kar raha ho, ya <b>kisi doosre thread ke complete hone ka</b> wait kar raha ho' },
+  { q: 'TERMINATED state kab hoti hai?', a: 'run() ka execution <b>poora khatam</b> ho gaya ho' },
+  { q: 'Java ke Thread.State enum mein kaunsi values hain?', a: 'NEW, RUNNABLE, BLOCKED, WAITING, TIMED_WAITING, TERMINATED — <b>RUNNING nahi hai!</b>' },
+  { q: 'RUNNING enum mein kyun nahi hai?', a: 'Java mein <b>RUNNABLE ka matlab</b> hi hai "ready to run OR actually running" — dono ko milakar ek hi state' },
+  { q: 'Thread.sleep(2000) kya karta hai?', a: 'Jis thread ka code chal raha hai usko <b>2 sec ke liye pause</b> karta hai — state ban jati hai <b>TIMED_WAITING</b>' },
+  { q: 't1.join() kya karta hai?', a: 'Current thread <b>t1 ke finish hone ka wait</b> karta hai — main() mein call kiya to main ruk jayega jab tak t1 khatam nahi hota' },
+  { q: 'sleep() ki InterruptedException ka kya scene hai?', a: 'Ye <b>checked exception</b> hai — <b>try-catch ya throws compulsory</b>. run() override karte waqt throws nahi likh sakte (parent run() throws nahi karta)' }
+];
+let fcIdx = 0;
+
+function renderCard() {
+  const card = document.getElementById('fc');
+  card.classList.remove('flip');
+  setTimeout(() => {
+    document.getElementById('fc-q').innerHTML = CARDS[fcIdx].q;
+    document.getElementById('fc-a').innerHTML = CARDS[fcIdx].a;
+  }, 150);
+  document.getElementById('fc-count').textContent = (fcIdx + 1) + '/' + CARDS.length;
+}
+function fcNext() { fcIdx = (fcIdx + 1) % CARDS.length; renderCard(); }
+function fcPrev() { fcIdx = (fcIdx - 1 + CARDS.length) % CARDS.length; renderCard(); }
+function fcShuffle() {
+  for (let i = CARDS.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [CARDS[i], CARDS[j]] = [CARDS[j], CARDS[i]];
+  }
+  fcIdx = 0;
+  renderCard();
+}
+document.getElementById('fc-q').innerHTML = CARDS[0].q;
+document.getElementById('fc-a').innerHTML = CARDS[0].a;
+
+/* ================= QUIZ ================= */
+const QUIZ = [
+  {
+    q: 'Thread NEW state mein kab hota hai?',
+    opts: ['start() call karne ke baad', 'Object create hote hi, start() se pehle', 'run() khatam hone ke baad', 'sleep() ke dauraan'],
+    ans: 1,
+    ex: 'Object bana = NEW. start() call karte hi RUNNABLE.'
+  },
+  {
+    q: 'start() call karne ke turant baad thread ki state kya hai?',
+    opts: ['RUNNING', 'RUNNABLE', 'NEW', 'TERMINATED'],
+    ans: 1,
+    ex: 'start() ke baad thread <b>ready to run</b> — RUNNABLE. CPU milne par chalta hai.'
+  },
+  {
+    q: 'Java ke Thread.State enum mein kaunsi value MISSING hai?',
+    opts: ['NEW', 'RUNNABLE', 'RUNNING', 'TERMINATED'],
+    ans: 2,
+    ex: '<b>RUNNING nahi hai!</b> RUNNABLE ka matlab hi "ready OR running" hai.'
+  },
+  {
+    q: 'Thread.sleep() ke dauraan thread ki state kya hoti hai?',
+    opts: ['RUNNABLE', 'WAITING', 'TIMED_WAITING', 'BLOCKED'],
+    ans: 2,
+    ex: 'Time ke saath sleep = <b>TIMED_WAITING</b>. Indefinite wait hota to WAITING.'
+  },
+  {
+    q: 'main() mein t1.join() call karne se kya hota hai?',
+    opts: ['t1 main thread ka wait karta hai', 'main thread t1 ke finish hone ka wait karta hai', 't1 foran terminate ho jata hai', 'kuch nahi hota'],
+    ans: 1,
+    ex: 'join() = caller waits. main() mein call kiya to <b>main t1 ka wait</b> karega, phir hi aage badhega.'
+  },
+  {
+    q: 'Thread.sleep() kya throw karta hai?',
+    opts: ['IOException', 'InterruptedException (checked)', 'NullPointerException', 'kuch nahi'],
+    ans: 1,
+    ex: '<b>InterruptedException</b> — checked exception, isliye try-catch ya throws zaroori.'
+  },
+  {
+    q: 'run() override karte waqt throws InterruptedException likh sakte hain?',
+    opts: ['Haan, hamesha', 'Nahi — parent Thread ka run() throws nahi karta', 'Sirf Runnable ke saath', 'Sirf static methods mein'],
+    ans: 1,
+    ex: 'Overridden method <b> nayi checked exception add nahi kar sakta</b> — isliye run() ke andar try-catch hi lagana padta hai.'
+  },
+  {
+    q: 'join() ke baad t1.getState() kya dega (agar t1 khatam ho chuka hai)?',
+    opts: ['RUNNABLE', 'TIMED_WAITING', 'TERMINATED', 'NEW'],
+    ans: 2,
+    ex: 'join() ke baad t1 completely finish ho chuka hota hai — <b>TERMINATED</b>.'
+  }
+];
+
+let quizAnswered = {};
+const quizDiv = document.getElementById('quiz');
+
+QUIZ.forEach((item, qi) => {
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  let optsHtml = '';
+  item.opts.forEach((o, oi) => {
+    optsHtml += '<button class="opt" onclick="answerQuiz(' + qi + ', this, ' + oi + ')">' + o + '</button>';
+  });
+  card.innerHTML =
+    '<span class="q-num">Q' + (qi + 1) + '</span>' +
+    '<div class="q-text">' + item.q + '</div>' +
+    '<div>' + optsHtml + '</div>' +
+    '<div class="expl" id="expl-' + qi + '"><b>Answer:</b> ' + item.ex + '</div>';
+  quizDiv.appendChild(card);
+});
+
+function answerQuiz(qi, btn, oi) {
+  if (quizAnswered[qi] !== undefined) return;
+  quizAnswered[qi] = oi;
+  const card = quizDiv.children[qi];
+  const buttons = card.querySelectorAll('.opt');
+  buttons.forEach(b => b.disabled = true);
+  if (oi === QUIZ[qi].ans) btn.classList.add('correct');
+  else {
+    btn.classList.add('wrong');
+    buttons[QUIZ[qi].ans].classList.add('correct');
+  }
+  document.getElementById('expl-' + qi).classList.add('show');
+
+  if (Object.keys(quizAnswered).length === QUIZ.length) {
+    const score = Object.entries(quizAnswered).filter(([qi2, oi2]) => oi2 === QUIZ[qi2].ans).length;
+    const box = document.getElementById('quiz-score');
+    document.getElementById('score-big').textContent = score + '/' + QUIZ.length;
+    let msg;
+    if (score === QUIZ.length) msg = 'Perfect! Lifecycle ekdum clear hai.';
+    else if (score >= 6) msg = 'Badhiya! Thode se points dobara revise kar lo.';
+    else msg = 'Theek hai — notes + flashcards dobara dekho, phir try karo!';
+    document.getElementById('score-msg').textContent = msg;
+    box.style.display = 'block';
+    box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+</script>
+</body>
+</html>
