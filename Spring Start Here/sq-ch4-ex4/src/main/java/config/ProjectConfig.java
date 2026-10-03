@@ -1,0 +1,32 @@
+package config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.Configuration;
+import proxies.CommentNotificationProxy;
+import proxies.EmailCommentRepositoryProxy;
+import repositories.CommentRepository;
+import repositories.DBCommentRepository;
+import services.CommentService;
+
+@Configuration
+public class ProjectConfig {
+
+    @Bean
+    public CommentRepository commentRepository(){
+        return new DBCommentRepository();
+    }
+
+    @Bean
+    public CommentNotificationProxy commentNotificationProxy(){
+        return new EmailCommentRepositoryProxy();
+    }
+
+    // DI is done through passing other beans as parameter to this bean instead of Autowired.
+    @Bean
+    public CommentService commentService(
+            CommentRepository commentRepository,
+            CommentNotificationProxy commentNotificationProxy) {
+        return new CommentService(commentRepository, commentNotificationProxy);
+    }
+}
